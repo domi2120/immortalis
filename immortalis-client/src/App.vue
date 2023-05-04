@@ -32,7 +32,7 @@
           <v-col :cols="3">
             <h2 >{{ video.title }}</h2>
             {{ video.channel }} <br>
-            {{ numberToDelimetedString(video.views, ",") }} views · uploaded: {{ video.uploadDate.toLocaleDateString() }} · archived: {{ video.archivedDate .toLocaleDateString() }} <br>
+            {{ numberToDelimetedString(video.views, ",") }} views · uploaded: {{ new Date(video.uploadDate).toLocaleDateString() }} · archived: {{ new Date(video.archivedDate).toLocaleDateString() }} <br>
             <v-select label="Download" :items="video.downloads" v-model="video.selectedDownload" class="w-40" return-object/>
             <v-btn @click="download(video)">Download</v-btn>
             <v-btn :href="video.originalUrl" class="ma-2">Watch Original</v-btn>
@@ -51,58 +51,10 @@
   const drawerOpened = ref(false);
   let videos: Ref<Video[]> = ref([]);
 
-  const search = () => videos.value = [{
-      title: "Ghost - Rats (Official Music Video)",
-      channel: "Ghost",
-      views: 5000000,
-      uploadDate: new Date(),
-      archivedDate: new Date(),
-      duration: 265,
-      thumbnailAddress: "https://img.youtube.com/vi/C_ijc7A5oAc/maxresdefault.jpg",
-      originalUrl: "https://www.youtube.com/watch?v=C_ijc7A5oAc",
-      downloads: [
-        {
-          title: "Download(1080p30)",
-          value: "Download(1080p30)"
-        },
-        {
-          title: "Audio Only",
-          value: "Audio Only"
-        }
-      ],
-      selectedDownload: 
-        {
-          title: "Download(1080p30)",
-          value: "Download(1080p30)"
-        }
-  },
-  {
-      title: "I Am",
-      channel: "Theocracy - Topic",
-      views: 388000,
-      uploadDate: new Date(),
-      archivedDate: new Date(),
-      duration: 660,
-      thumbnailAddress: "https://img.youtube.com/vi/vfc8EjDuYNw/maxresdefault.jpg",
-      originalUrl: "https://www.youtube.com/watch?v=vfc8EjDuYNw",
-      downloads: [
-        {
-          title: "Download(1080p30)",
-          value: "Download(1080p30)"
-        },
-        {
-          title: "Audio Only",
-          value: "Audio Only"
-        }
-      ],
-      selectedDownload: 
-        {
-          title: "Download(1080p30)",
-          value: "Download(1080p30)"
-        }
-  }];
+  const search = async () => {
+    videos.value = await (await fetch("api/search")).json();
+  }
 
-  search();
   function numberToDelimetedString(x: number, delimeter: string) {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, delimeter);
   }
@@ -111,6 +63,7 @@
     console.log(video.title + " " + video.selectedDownload.value);
   }
   
+  search();
 </script>
 <style>
 </style>
