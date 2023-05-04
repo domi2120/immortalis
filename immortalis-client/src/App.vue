@@ -20,22 +20,24 @@
       -->
       </v-navigation-drawer>
       <v-container class="ma-10">
-        <v-row v-for="video in videos">
-          <v-col cols="12" sm=2>
+        <v-row v-for="video in videos" >
+          <v-spacer></v-spacer>
+          <v-col :cols="1" sm=2 class="pa-3 ma-1">
             <v-img :src="video.thumbnailAddress" class="d-flex align-end" >
               <v-chip class="d-float float-right ">
                 {{ new Date(video.duration * 1000).toISOString().slice(11, 19) }}
               </v-chip>
             </v-img>
           </v-col>
-          <v-col>
+          <v-col :cols="3">
             <h2 >{{ video.title }}</h2>
             {{ video.channel }} <br>
             {{ numberToDelimetedString(video.views, ",") }} views · uploaded: {{ video.uploadDate.toLocaleDateString() }} · archived: {{ video.archivedDate .toLocaleDateString() }} <br>
-            <v-select label="Download" :items="video.downloads" v-model="video.selectedDownload" class="w-25" return-object>
+            <v-select label="Download" :items="video.downloads" v-model="video.selectedDownload" class="w-40" return-object>
             </v-select>
               <v-btn @click="download(video)">Download</v-btn>
           </v-col>
+          <v-spacer></v-spacer>
         </v-row>
       </v-container>
     </v-main>
@@ -57,6 +59,30 @@
       archivedDate: new Date(),
       duration: 265,
       thumbnailAddress: "https://img.youtube.com/vi/C_ijc7A5oAc/maxresdefault.jpg",
+      downloads: [
+        {
+          title: "Download(1080p30)",
+          value: "Download(1080p30)"
+        },
+        {
+          title: "Audio Only",
+          value: "Audio Only"
+        }
+      ],
+      selectedDownload: 
+        {
+          title: "Download(1080p30)",
+          value: "Download(1080p30)"
+        }
+  },
+  {
+      title: "I Am",
+      channel: "Theocracy - Topic",
+      views: 388000,
+      uploadDate: new Date(),
+      archivedDate: new Date(),
+      duration: 660,
+      thumbnailAddress: "https://img.youtube.com/vi/vfc8EjDuYNw/maxresdefault.jpg",
       downloads: [
         {
           title: "Download(1080p30)",
