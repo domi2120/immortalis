@@ -10,5 +10,6 @@ export interface Video {
     thumbnailAddress: string;
     downloads: Download[];
     selectedDownload: Download;
+    originalUrl: string;
 }
 

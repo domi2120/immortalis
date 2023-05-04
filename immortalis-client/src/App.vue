@@ -33,9 +33,9 @@
             <h2 >{{ video.title }}</h2>
             {{ video.channel }} <br>
             {{ numberToDelimetedString(video.views, ",") }} views · uploaded: {{ video.uploadDate.toLocaleDateString() }} · archived: {{ video.archivedDate .toLocaleDateString() }} <br>
-            <v-select label="Download" :items="video.downloads" v-model="video.selectedDownload" class="w-40" return-object>
-            </v-select>
-              <v-btn @click="download(video)">Download</v-btn>
+            <v-select label="Download" :items="video.downloads" v-model="video.selectedDownload" class="w-40" return-object/>
+            <v-btn @click="download(video)">Download</v-btn>
+            <v-btn :href="video.originalUrl" class="ma-2">Watch Original</v-btn>
           </v-col>
           <v-spacer></v-spacer>
         </v-row>
@@ -59,6 +59,7 @@
       archivedDate: new Date(),
       duration: 265,
       thumbnailAddress: "https://img.youtube.com/vi/C_ijc7A5oAc/maxresdefault.jpg",
+      originalUrl: "https://www.youtube.com/watch?v=C_ijc7A5oAc",
       downloads: [
         {
           title: "Download(1080p30)",
@@ -83,6 +84,7 @@
       archivedDate: new Date(),
       duration: 660,
       thumbnailAddress: "https://img.youtube.com/vi/vfc8EjDuYNw/maxresdefault.jpg",
+      originalUrl: "https://www.youtube.com/watch?v=vfc8EjDuYNw",
       downloads: [
         {
           title: "Download(1080p30)",
