@@ -1,5 +1,11 @@
 // @generated automatically by Diesel CLI.
 
+pub mod sql_types {
+    #[derive(diesel::sql_types::SqlType)]
+    #[diesel(postgres_type(name = "video_status"))]
+    pub struct VideoStatus;
+}
+
 diesel::table! {
     downloads (id) {
         id -> Int4,
@@ -10,6 +16,9 @@ diesel::table! {
 }
 
 diesel::table! {
+    use diesel::sql_types::*;
+    use super::sql_types::VideoStatus;
+
     videos (id) {
         id -> Int4,
         title -> Varchar,
@@ -20,6 +29,7 @@ diesel::table! {
         duration -> Int4,
         thumbnail_address -> Varchar,
         original_url -> Varchar,
+        status -> VideoStatus,
     }
 }
 

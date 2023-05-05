@@ -9,3 +9,4 @@ edition = "2021"
 chrono = { version= "0.4.24", features = ["serde"] }
 serde = { version= "1.0.160", features = ["std", "derive"] }
 diesel = { version = "2.0.0", features = ["postgres"] }
+diesel-derive-enum = { version = "2.0.1", features = ["postgres"] }
