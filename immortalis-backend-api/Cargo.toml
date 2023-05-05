@@ -11,3 +11,5 @@ chrono = { version= "0.4.24", features = ["serde"] }
 immortalis-backend-common= { path="../immortalis-backend-common" }
 serde = { version= "1.0.152", features = ["std", "derive"] }
 serde_json = "1"
+diesel = { version = "2.0.0", features = ["postgres", "chrono"] }
+dotenvy = "0.15"
