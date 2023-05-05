@@ -1,9 +1,11 @@
-use serde::{Deserialize, Serialize};
 use crate::database_models::video::Video;
-use crate::schema::{downloads};
+use crate::schema::downloads;
 use diesel::prelude::*;
+use serde::{Deserialize, Serialize};
 
-#[derive(Deserialize, Serialize, std::fmt::Debug, Queryable, Associations, Identifiable, Selectable)]
+#[derive(
+    Deserialize, Serialize, std::fmt::Debug, Queryable, Associations, Identifiable, Selectable,
+)]
 #[diesel(belongs_to(Video))]
 #[serde(rename_all = "camelCase")]
 pub struct Download {

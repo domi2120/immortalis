@@ -35,7 +35,4 @@ diesel::table! {
 
 diesel::joinable!(downloads -> videos (video_id));
 
-diesel::allow_tables_to_appear_in_same_query!(
-    downloads,
-    videos,
-);
+diesel::allow_tables_to_appear_in_same_query!(downloads, videos,);

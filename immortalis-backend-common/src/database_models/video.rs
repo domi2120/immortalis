@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
+use crate::schema::videos;
 use diesel::prelude::*;
-use crate::schema::{videos};
+use serde::{Deserialize, Serialize};
 
 use super::video_status::VideoStatus;
 
@@ -17,5 +17,5 @@ pub struct Video {
     pub duration: i32,
     pub thumbnail_address: String,
     pub original_url: String,
-    pub status: VideoStatus
+    pub status: VideoStatus,
 }

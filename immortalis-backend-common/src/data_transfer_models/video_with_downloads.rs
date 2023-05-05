@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::database_models::{video::Video, download::Download};
+use crate::database_models::{download::Download, video::Video};
 
 #[derive(Serialize, Deserialize)]
 pub struct VideoWithDownload {
