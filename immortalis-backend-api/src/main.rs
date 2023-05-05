@@ -1,15 +1,11 @@
-//use immortalis_backend_common::{video::Video, download::Download};
+use immortalis_backend_common::{video::Video, download::Download};
 use actix_web::{get, App, HttpResponse, HttpServer, Responder, web};
 
 pub mod schema;
-pub mod video;
-pub mod download;
-
 //use diesel::associations::HasTable;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::{RunQueryDsl, AsyncPgConnection};
-use video::Video;
 use self::schema::videos;
 use dotenvy::dotenv;
 
