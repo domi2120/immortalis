@@ -1,12 +1,14 @@
+use immortalis_backend_common::data_transfer_models::video_with_downloads::VideoWithDownload;
 use immortalis_backend_common::database_models::{video::Video, download::Download};
+use immortalis_backend_common::schema::{videos, downloads};
 use actix_web::{get, App, HttpResponse, HttpServer, Responder, web};
 
-pub mod schema;
-//use diesel::associations::HasTable;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::{RunQueryDsl, AsyncPgConnection};
-use self::schema::videos;
+use diesel::BelongingToDsl;
+use diesel::GroupedBy;
+
 use dotenvy::dotenv;
 
 #[get("/health")]
@@ -21,6 +23,16 @@ async fn search(app_state: web::Data<AppState>) -> impl Responder {
     let results = videos::table
     .load::<Video>(&mut conn).await
     .expect("Error loading posts");
+
+    let retrieved_downloads = Download::belonging_to(&results)
+        .load::<Download>(&mut conn).await.unwrap();
+
+    let videos_with_downloads = retrieved_downloads
+        .grouped_by(&results)
+        .into_iter()
+        .zip(results)
+        .map(|(dl, vid)| VideoWithDownload{downloads: dl, video: vid} )
+        .collect::<Vec<VideoWithDownload>>();
 
     let test_data =vec![
         Video {
@@ -86,7 +98,7 @@ async fn search(app_state: web::Data<AppState>) -> impl Responder {
         */
         }
     ];
-    HttpResponse::Ok().json(results)
+    HttpResponse::Ok().json(videos_with_downloads)
 }
 
 struct AppState {

@@ -1,7 +1,7 @@
 // @generated automatically by Diesel CLI.
 
 diesel::table! {
-    videodownloads (id) {
+    downloads (id) {
         id -> Int4,
         video_id -> Int4,
         title -> Varchar,
@@ -23,9 +23,9 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(videodownloads -> videos (video_id));
+diesel::joinable!(downloads -> videos (video_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
-    videodownloads,
+    downloads,
     videos,
 );

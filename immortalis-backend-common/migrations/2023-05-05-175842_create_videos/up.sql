@@ -11,7 +11,7 @@ CREATE TABLE videos (
   PRIMARY KEY(id)
 );
 
-CREATE TABLE videoDownloads (
+CREATE TABLE downloads (
     id int GENERATED ALWAYS AS IDENTITY,
     video_id int NOT NULL,
     title VARCHAR NOT NULL,
