@@ -54,6 +54,7 @@
 
   const search = async () => {
     videos.value = await (await fetch("api/search?" + new URLSearchParams({term: `${searchText.value}`}))).json();
+    videos.value.forEach((x: Video) => x.selectedDownload = x.downloads[0])
   }
 
   function numberToDelimetedString(x: number, delimeter: string) {
