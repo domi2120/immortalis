@@ -6,8 +6,9 @@ use actix_web::{get, App, HttpResponse, HttpServer, Responder, web};
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::{RunQueryDsl, AsyncPgConnection};
-use diesel::BelongingToDsl;
+use diesel::{BelongingToDsl, QueryDsl, TextExpressionMethods, ExpressionMethods, PgTextExpressionMethods};
 use diesel::GroupedBy;
+use serde::Deserialize;
 
 use dotenvy::dotenv;
 
@@ -16,12 +17,23 @@ async fn health() -> impl Responder {
     HttpResponse::Ok().body("true")
 }
 
+#[derive(Deserialize)]
+struct searchQuery {
+    term: Option<String>,
+}
+
 #[get("/search")]
-async fn search(app_state: web::Data<AppState>) -> impl Responder {
+async fn search(query: web::Query<searchQuery> ,app_state: web::Data<AppState>) -> impl Responder {
 
     let mut conn = app_state.db_connection_pool.get().await.unwrap();
-    let results = videos::table
-    .load::<Video>(&mut conn).await
+    let mut results = videos::table.into_boxed();
+
+    match &query.term {
+        Some(x) => results = results.filter(videos::title.ilike("%".to_string() + &x + &"%".to_string())),
+        _ => ()
+    }
+    
+    let results = results.load::<Video>(&mut conn).await
     .expect("Error loading posts");
 
     let retrieved_downloads = Download::belonging_to(&results)
@@ -33,7 +45,7 @@ async fn search(app_state: web::Data<AppState>) -> impl Responder {
         .zip(results)
         .map(|(dl, vid)| VideoWithDownload{downloads: dl, video: vid} )
         .collect::<Vec<VideoWithDownload>>();
-    
+
     HttpResponse::Ok().json(videos_with_downloads)
 }
 

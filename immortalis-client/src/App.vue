@@ -4,7 +4,7 @@
       <v-app-bar>
         <v-app-bar-nav-icon @click="drawerOpened= !drawerOpened" />
         <v-toolbar-title>Immortalis</v-toolbar-title>
-        <v-text-field label="Search" clearable class="w-50 mt-5 h-80" @keydown.enter="search">
+        <v-text-field label="Search" v-model="searchText" clearable class="w-50 mt-5 h-80" @keydown.enter="search">
         </v-text-field>
         <v-spacer></v-spacer>
       </v-app-bar>
@@ -50,9 +50,10 @@
 
   const drawerOpened = ref(false);
   let videos: Ref<Video[]> = ref([]);
+  let searchText: Ref<string> = ref("");
 
   const search = async () => {
-    videos.value = await (await fetch("api/search")).json();
+    videos.value = await (await fetch("api/search?" + new URLSearchParams({term: `${searchText.value}`}))).json();
   }
 
   function numberToDelimetedString(x: number, delimeter: string) {
