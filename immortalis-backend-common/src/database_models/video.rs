@@ -1,6 +1,6 @@
 
 
-use crate::download::Download;
+use crate::database_models::download;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use diesel::prelude::*;

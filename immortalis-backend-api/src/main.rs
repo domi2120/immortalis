@@ -1,4 +1,4 @@
-use immortalis_backend_common::{video::Video, download::Download};
+use immortalis_backend_common::database_models::{video::Video, download::Download};
 use actix_web::{get, App, HttpResponse, HttpServer, Responder, web};
 
 pub mod schema;
