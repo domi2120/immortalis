@@ -27,11 +27,8 @@ async fn search(query: web::Query<SearchQuery>, app_state: web::Data<AppState>) 
     let mut conn = app_state.db_connection_pool.get().await.unwrap();
     let mut results = videos::table.into_boxed();
 
-    match &query.term {
-        Some(x) => {
-            results = results.filter(videos::title.ilike("%".to_string() + &x + &"%".to_string()))
-        }
-        _ => (),
+    if let Some(x) = &query.term {
+        results = results.filter(videos::title.ilike("%".to_string() + x + "%"))
     }
 
     let results = results
