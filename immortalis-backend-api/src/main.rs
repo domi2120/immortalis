@@ -1,12 +1,17 @@
 //use immortalis_backend_common::{video::Video, download::Download};
-use actix_web::{get, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, App, HttpResponse, HttpServer, Responder, web};
 
 pub mod schema;
 pub mod video;
 pub mod download;
 
+//use diesel::associations::HasTable;
+use diesel_async::pooled_connection::AsyncDieselConnectionManager;
+use diesel_async::pooled_connection::deadpool::Pool;
+use diesel_async::{RunQueryDsl, AsyncPgConnection};
 use video::Video;
-use download::Download;
+use self::schema::videos;
+use dotenvy::dotenv;
 
 #[get("/health")]
 async fn health() -> impl Responder {
@@ -14,16 +19,11 @@ async fn health() -> impl Responder {
 }
 
 #[get("/search")]
-async fn search() -> impl Responder {
+async fn search(app_state: web::Data<AppState>) -> impl Responder {
 
-
-    use self::schema::videos::dsl::*;
-    use self::schema::videodownloads::dsl::*;
-
-    let connection = &mut establish_connection();
-    let results = videos
-    .limit(5)
-    .load::<Video>(connection)
+    let mut conn = app_state.db_connection_pool.get().await.unwrap();
+    let results = videos::table
+    .load::<Video>(&mut conn).await
     .expect("Error loading posts");
 
     let test_data =vec![
@@ -93,10 +93,22 @@ async fn search() -> impl Responder {
     HttpResponse::Ok().json(results)
 }
 
+struct AppState {
+    db_connection_pool: Pool<AsyncPgConnection>,
+}
+
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
+
+    dotenv().ok();
+    let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(std::env::var("DATABASE_URL").unwrap());
+    let pool = Pool::builder(config).build().unwrap();
+
+    HttpServer::new(move|| {
         App::new()
+            .app_data(web::Data::new(AppState {
+                db_connection_pool: pool.clone()
+            }))
             .service(health)
             .service(search)
     })
@@ -104,17 +116,4 @@ async fn main() -> std::io::Result<()> {
     .bind("[::1]:8080")?
     .run()
     .await
-}
-
-use diesel::pg::PgConnection;
-use diesel::prelude::*;
-use dotenvy::dotenv;
-use std::env;
-
-pub fn establish_connection() -> PgConnection {
-    dotenv().ok();
-
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-    PgConnection::establish(&database_url)
-        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
 }
