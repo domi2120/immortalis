@@ -10,8 +10,8 @@
       </v-app-bar>
       <v-navigation-drawer v-model="drawerOpened" permanent>
         <v-list nav :mandatory="true">
-          <v-list-item :value="'Home'" :title="'Home'"  @click="$router.push('/')" active></v-list-item>
-          <v-list-item :value="'Scheduling'" :title="'Scheduling'"  @click="$router.push('/scheduling')">
+          <v-list-item :value="'Home'" :title="'Home'" @click="$router.push('/')"></v-list-item>
+          <v-list-item :value="'Scheduling'" :title="'Scheduling'" @click="$router.push('/scheduling')">
           </v-list-item>
         </v-list>
       </v-navigation-drawer>

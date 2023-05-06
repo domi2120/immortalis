@@ -46,7 +46,7 @@ async fn test(pool: Pool<AsyncPgConnection>) {
 
     let yt_video_result = YoutubeDl::new(&result.url).run_async().await;
     if let Ok(video) = yt_video_result {
-        let video = video
+        let yt_dl_video = video
         .into_single_video()
         .unwrap();
     
@@ -82,29 +82,44 @@ async fn test(pool: Pool<AsyncPgConnection>) {
         cmd.await.unwrap();
         */
 
-        let upload_date = video.upload_date.unwrap();
-        let video_duration = match video.duration {
+        let upload_date = yt_dl_video.upload_date.unwrap();
+        let video_duration = match yt_dl_video.duration {
             Some(x) => i32::try_from(x.as_i64().unwrap()).unwrap(),
             None => 0,
         };
-        
+
         let video = InsertableVideo {
-            title: video.title,
-            channel: video.channel.unwrap(),
-            views: video.view_count.unwrap(),
+            title: yt_dl_video.title,
+            channel: yt_dl_video.channel.unwrap(),
+            views: yt_dl_video.view_count.unwrap(),
             upload_date: chrono::NaiveDateTime::new(chrono::NaiveDate::from_ymd_opt(upload_date[0..=3].parse::<i32>().unwrap(), upload_date[4..=5].parse::<u32>().unwrap(), upload_date[6..=7].parse::<u32>().unwrap()).unwrap(), chrono::NaiveTime::from_num_seconds_from_midnight_opt(0, 0).unwrap()),
             archived_date: chrono::Utc::now().naive_utc(),
             duration: video_duration,
-            thumbnail_address: video.thumbnail.unwrap(),
+            thumbnail_address: yt_dl_video.thumbnail.unwrap(),
             original_url: result.url.clone(),
             status: immortalis_backend_common::database_models::video_status::VideoStatus::BeingArchived,
         };
 
         insert_into(videos::table).values(video).execute(&mut db_connection).await.unwrap();
 
-        tokio::time::sleep(tokio::time::Duration::from_secs(15)).await;
+        tokio::time::sleep(tokio::time::Duration::from_secs(15)).await; //placeholder for actual download
+        
 
-        update(videos::table).set(videos::status.eq(VideoStatus::Archived)).execute(&mut db_connection).await.unwrap();
+        // if duration is 0 (video), we're done. If it isnt (livestream), we need to reload the metadata and update the duration
+        if video_duration != 0 {
+            update(videos::table).set(videos::status.eq(VideoStatus::Archived)).execute(&mut db_connection).await.unwrap();
+            return;
+        }
+
+        let video_duration = YoutubeDl::new(&result.url).run_async().await.unwrap()
+        .into_single_video()
+        .unwrap()
+        .duration
+        .unwrap()
+        .as_i64()
+        .unwrap();
+
+        update(videos::table).set((videos::status.eq(VideoStatus::Archived), videos::duration.eq(i32::try_from(video_duration).unwrap()))).execute(&mut db_connection).await.unwrap();
     } else {
         // try again in 10 minutes
         update(scheduled_archivals::table).set(scheduled_archivals::not_before.eq(chrono::Utc::now().naive_utc().checked_add_signed(Duration::minutes(10)).unwrap())).execute(&mut db_connection).await.unwrap();
