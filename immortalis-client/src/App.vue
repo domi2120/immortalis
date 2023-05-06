@@ -4,7 +4,7 @@
       <v-app-bar>
         <v-app-bar-nav-icon @click="drawerOpened= !drawerOpened" />
         <v-toolbar-title>Immortalis</v-toolbar-title>
-        <v-text-field label="Search" v-model="searchText" clearable class="w-50 mt-5 h-80" @keydown.enter="search">
+        <v-text-field label="Search" append-inner-icon="mdi-magnify" v-model="searchText" clearable class="w-50 mt-5 h-80" @keydown.enter="search">
         </v-text-field>
         <v-spacer></v-spacer>
       </v-app-bar>
