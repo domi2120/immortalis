@@ -1,0 +1,46 @@
+<template>
+    <v-container class="fill-height" v-if="props.video.value.title" >
+        <v-spacer></v-spacer>
+        <v-col :cols="1" sm=3 class="pa-3">
+            <v-img :src="props.video.value.thumbnailAddress" class="d-flex align-end" >
+              <v-chip class="d-float float-right ">
+                {{ new Date(props.video.value.duration * 1000).toISOString().slice(11, 19) }}
+              </v-chip>
+            </v-img>
+          </v-col>
+          <v-col :cols="3">
+            <h2 >{{ props.video.value.title }}</h2>
+            {{ props.video.value.channel }} <br>
+            {{ numberToDelimetedString(props.video.value.views, ",") }} views · uploaded: {{ new Date(props.video.value.uploadDate).toLocaleDateString() }} · archived: {{ new Date(props.video.value.archivedDate).toLocaleDateString() }} <br>
+            <v-select label="Download" :items="props.video.value.downloads" v-model="props.video.value.selectedDownload" class="w-40" return-object/>
+            <v-btn @click="download(video)">Download</v-btn>
+            <v-btn :href="props.video.value.originalUrl" class="ma-2">Watch Original</v-btn>
+          </v-col>
+        <v-spacer></v-spacer>
+    </v-container>
+</template>
+  
+<script setup lang="ts">
+
+import { Video } from '@/models/video';
+import { ref } from 'vue';
+import { Ref } from 'vue';
+
+let video: Ref<Video | {}> = ref({});
+
+const props = defineProps<
+    {
+        video: Ref<Video>
+    }
+>();
+
+function numberToDelimetedString(x: number, delimeter: string) {
+    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, delimeter);
+}
+
+function download(video: any) {
+    console.log(video.title + " " + video.selectedDownload.value);
+}
+
+</script>
+  
