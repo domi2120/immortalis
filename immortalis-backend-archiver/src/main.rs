@@ -11,6 +11,8 @@ use tokio::time::Duration;
 use dotenvy::dotenv;
 use async_process::Command;
 
+use youtube_dl::YoutubeDl;
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
@@ -37,7 +39,14 @@ async fn test(pool: Pool<AsyncPgConnection>) {
     let result = &results[0];
     println!("Archiving entry: {} with url: {}", result.id, result.url);
 
+    let video = YoutubeDl::new(&result.url)
+        .run_async()
+        .await
+        .unwrap()
+        .into_single_video()
+        .unwrap();
 
+/*
     let cmd = Command::new("yt-dlp")
     .arg(&result.url)
     .arg("-o")
@@ -64,15 +73,18 @@ async fn test(pool: Pool<AsyncPgConnection>) {
     .output();
 
     cmd.await.unwrap();
-    
+    */
+
+    let uploadDate = video.upload_date.unwrap();
+    //println!("{:#?}", video.upload_date.unwrap());
     let video = InsertableVideo {
-        title: "test".to_string(),
-        channel: "test".to_string(),
-        views: 4 as i64,
-        upload_date: chrono::Utc::now().naive_utc(),
+        title: video.title,
+        channel: video.channel.unwrap(),
+        views: video.view_count.unwrap(),
+        upload_date: chrono::NaiveDateTime::new(chrono::NaiveDate::from_ymd_opt(uploadDate[0..=3].parse::<i32>().unwrap(), uploadDate[4..=5].parse::<u32>().unwrap(), uploadDate[6..=7].parse::<u32>().unwrap()).unwrap(), chrono::NaiveTime::from_num_seconds_from_midnight_opt(0, 0).unwrap()),
         archived_date: chrono::Utc::now().naive_utc(),
-        duration: 5,
-        thumbnail_address: "https://www.youtube.com/watch?v=qFcXSzEI5CQ/maxresdefault.jpg".to_string(),
+        duration: i32::try_from(video.duration.unwrap().as_i64().unwrap()).unwrap(),
+        thumbnail_address: video.thumbnail.unwrap(),
         original_url: result.url.clone(),
         status: immortalis_backend_common::database_models::video_status::VideoStatus::Archived,
     };
