@@ -53,7 +53,27 @@ async fn test(pool: Pool<AsyncPgConnection>) {
         delete(scheduled_archivals::table).filter(scheduled_archivals::id.eq(result.id)).execute(&mut db_connection).await.unwrap();
         println!("Dequeued entry: {} with url: {}", result.id, result.url);
 
-    /*
+        let upload_date = yt_dl_video.upload_date.unwrap();
+        let video_duration = match yt_dl_video.duration {
+            Some(x) => i32::try_from(x.as_i64().unwrap()).unwrap(),
+            None => 0,
+        };
+
+        let video = InsertableVideo {
+            title: yt_dl_video.title,
+            channel: yt_dl_video.channel.unwrap(),
+            views: yt_dl_video.view_count.unwrap(),
+            upload_date: chrono::NaiveDateTime::new(chrono::NaiveDate::from_ymd_opt(upload_date[0..=3].parse::<i32>().unwrap(), upload_date[4..=5].parse::<u32>().unwrap(), upload_date[6..=7].parse::<u32>().unwrap()).unwrap(), chrono::NaiveTime::from_num_seconds_from_midnight_opt(0, 0).unwrap()),
+            archived_date: chrono::Utc::now().naive_utc(),
+            duration: video_duration,
+            thumbnail_address: yt_dl_video.thumbnail.unwrap(),
+            original_url: result.url.clone(),
+            status: immortalis_backend_common::database_models::video_status::VideoStatus::BeingArchived,
+        };
+
+        insert_into(videos::table).values(video).execute(&mut db_connection).await.unwrap();
+
+    
         let cmd = Command::new("yt-dlp")
         .arg(&result.url)
         .arg("-o")
@@ -80,29 +100,8 @@ async fn test(pool: Pool<AsyncPgConnection>) {
         .output();
 
         cmd.await.unwrap();
-        */
-
-        let upload_date = yt_dl_video.upload_date.unwrap();
-        let video_duration = match yt_dl_video.duration {
-            Some(x) => i32::try_from(x.as_i64().unwrap()).unwrap(),
-            None => 0,
-        };
-
-        let video = InsertableVideo {
-            title: yt_dl_video.title,
-            channel: yt_dl_video.channel.unwrap(),
-            views: yt_dl_video.view_count.unwrap(),
-            upload_date: chrono::NaiveDateTime::new(chrono::NaiveDate::from_ymd_opt(upload_date[0..=3].parse::<i32>().unwrap(), upload_date[4..=5].parse::<u32>().unwrap(), upload_date[6..=7].parse::<u32>().unwrap()).unwrap(), chrono::NaiveTime::from_num_seconds_from_midnight_opt(0, 0).unwrap()),
-            archived_date: chrono::Utc::now().naive_utc(),
-            duration: video_duration,
-            thumbnail_address: yt_dl_video.thumbnail.unwrap(),
-            original_url: result.url.clone(),
-            status: immortalis_backend_common::database_models::video_status::VideoStatus::BeingArchived,
-        };
-
-        insert_into(videos::table).values(video).execute(&mut db_connection).await.unwrap();
-
-        tokio::time::sleep(tokio::time::Duration::from_secs(15)).await; //placeholder for actual download
+        
+        //tokio::time::sleep(tokio::time::Duration::from_secs(15)).await; //placeholder for actual download
         
 
         // if duration is 0 (video), we're done. If it isnt (livestream), we need to reload the metadata and update the duration
