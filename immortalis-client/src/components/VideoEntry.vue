@@ -12,9 +12,10 @@
             <h2 >{{ props.video.value.title }}</h2>
             {{ props.video.value.channel }} <br>
             {{ numberToDelimetedString(props.video.value.views, ",") }} views · uploaded: {{ new Date(props.video.value.uploadDate).toLocaleDateString() }} · archived: {{ new Date(props.video.value.archivedDate).toLocaleDateString() }} <br>
-            <v-select label="Download" :items="props.video.value.downloads" v-model="props.video.value.selectedDownload" class="w-40" return-object/>
-            <v-btn @click="download(video)">Download</v-btn>
+            <v-select :disabled="props.video.value.downloads.length < 1" label="Download" :items="props.video.value.downloads" v-model="props.video.value.selectedDownload" class="w-40" return-object/>
+            <v-btn @click="download(video)" :disabled="props.video.value.downloads.length < 1">Download</v-btn>
             <v-btn :href="props.video.value.originalUrl" class="ma-2">Watch Original</v-btn>
+            <v-chip>{{ props.video.value.status }}</v-chip>
           </v-col>
         <v-spacer></v-spacer>
     </v-container>
