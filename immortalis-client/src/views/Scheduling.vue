@@ -6,29 +6,62 @@
         <v-text-field :label="'Url'" class="w-50 mt-10" v-model="url" ></v-text-field>
         <v-btn @click="schedule">Schedule</v-btn>
       </v-col>
+
+      <v-data-table
+      :headers="headers"
+      :items="schedules"
+      :items-per-page="5"
+      class="elevation-1"
+    ></v-data-table>
     </v-container>
   </template>
   
-  <script lang="ts" setup>
-    import { Ref, ref } from 'vue';
-    import { watch } from 'vue';
+<script lang="ts" setup>
+  import { onMounted } from 'vue';
+  import { Ref, ref } from 'vue';
+  import { watch } from 'vue';
 
-    const url: Ref<string> = ref("");
-    
-    async function schedule() {
-      fetch("/api/schedule",
+  const url: Ref<string> = ref("");
+  
+  const headers = ref(
+    [
       {
-        method: "POST",
-        body: JSON.stringify(
-          {
-            url: url.value
-          }),
-          headers: {
-            "Content-Type": "application/json",
-            // 'Content-Type': 'application/x-www-form-urlencoded',
-          }
+        title: 'Url',
+        value: 'url',
+        align: 'start',
+        //sortable: 'true'
+      },
+      {
+        title: 'ScheduledAt',
+        value: 'scheduledAt',
+        align: 'start'
+      }
+    ]
+  );
+
+  
+  const schedules = ref([]);
+  onMounted(async () => {
+    schedules.value = await (await fetch("/api/schedule")).json();
+    setTimeout(async () => {
+      schedules.value = await (await fetch("/api/schedule")).json();
+    }, 5 * 1000);
+  })
+  
+  async function schedule() {
+    fetch("/api/schedule",
+    {
+      method: "POST",
+      body: JSON.stringify(
+        {
+          url: url.value
+        }),
+        headers: {
+          "Content-Type": "application/json",
+          // 'Content-Type': 'application/x-www-form-urlencoded',
         }
-      );
-    }
-  </script>
+      }
+    );
+  }
+</script>
   

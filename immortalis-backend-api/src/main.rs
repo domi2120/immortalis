@@ -1,6 +1,6 @@
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, post};
 use immortalis_backend_common::data_transfer_models::video_with_downloads::VideoWithDownload;
-use immortalis_backend_common::database_models::{download::Download, video::Video};
+use immortalis_backend_common::database_models::{download::Download, video::Video, scheduled_archival::ScheduledArchival};
 use immortalis_backend_common::schema::{videos, scheduled_archivals};
 
 use diesel::{GroupedBy, insert_into, ExpressionMethods};
@@ -15,6 +15,18 @@ use dotenvy::dotenv;
 #[get("/health")]
 async fn health() -> impl Responder {
     HttpResponse::Ok().body("true")
+}
+
+#[get("/schedule")]
+async fn get_schedules(app_state: web::Data<AppState>) -> impl Responder {
+    let mut results = scheduled_archivals::table.into_boxed();
+
+    let results = results
+        .load::<ScheduledArchival>(&mut app_state.db_connection_pool.get().await.unwrap())
+        .await
+        .expect("Error loading posts");
+    
+    HttpResponse::Ok().json(results)
 }
 
 #[derive(Deserialize)]
@@ -90,6 +102,7 @@ async fn main() -> std::io::Result<()> {
             .service(health)
             .service(search)
             .service(schedule)
+            .service(get_schedules)
     })
     .bind(("0.0.0.0", 8080))?
     .bind("[::1]:8080")?
