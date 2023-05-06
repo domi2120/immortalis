@@ -1,11 +1,14 @@
 use std::{collections::HashMap, fs, path::PathBuf, borrow::Cow};
-use diesel::{GroupedBy, insert_into, ExpressionMethods, delete};
+use diesel::associations::HasTable;
+use diesel::query_dsl::methods::LockingDsl;
+use diesel::{GroupedBy, insert_into, ExpressionMethods, delete, update};
 use diesel::{BelongingToDsl, PgTextExpressionMethods, QueryDsl};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use immortalis_backend_common::database_models::scheduled_archival::ScheduledArchival;
 use immortalis_backend_common::database_models::video::{Video, InsertableVideo};
+use immortalis_backend_common::database_models::video_status::VideoStatus;
 use immortalis_backend_common::schema::{scheduled_archivals, videos};
 use tokio::time::Duration;
 use dotenvy::dotenv;
@@ -32,67 +35,77 @@ async fn main() {
 
 async fn test(pool: Pool<AsyncPgConnection>) {
     let mut db_connection = &mut pool.get().await.unwrap();
+    
     let results = scheduled_archivals::table.limit(1).load::<ScheduledArchival>(&mut db_connection).await.unwrap();
+    
     if results.len() == 0 {
         return;
     }
-    let result = &results[0];
-    println!("Archiving entry: {} with url: {}", result.id, result.url);
 
-    let video = YoutubeDl::new(&result.url)
-        .run_async()
-        .await
-        .unwrap()
+    let result = &results[0];
+
+    let yt_video_result = YoutubeDl::new(&result.url).run_async().await;
+    if let Ok(video) = yt_video_result {
+        let video = video
         .into_single_video()
         .unwrap();
-
-/*
-    let cmd = Command::new("yt-dlp")
-    .arg(&result.url)
-    .arg("-o")
-    .arg(
-        std::env::var("FILE_STORAGE_LOCATION")
-            .expect("FILE_STORAGE_LOCATION invalid or missing")
-            + "%(title)s.%(ext)s",
-    )
-    .arg("--embed-thumbnail")
-    .arg("--embed-metadata")
-    .arg("--embed-chapters")
-    .arg("--embed-info-json")
-    .arg("--embed-subs")
-    .arg("--wait-for-video")
-    .arg("60")
-    .arg("--live-from-start")
-    .arg("--print")
-    .arg(
-        std::env::var("FILE_STORAGE_LOCATION")
-        .expect("FILE_STORAGE_LOCATION invalid or missing")
-        + "%(title)s"
-    )
-    .arg("--no-simulate")
-    .output();
-
-    cmd.await.unwrap();
-    */
-
-    let uploadDate = video.upload_date.unwrap();
-    //println!("{:#?}", video.upload_date.unwrap());
-    let video = InsertableVideo {
-        title: video.title,
-        channel: video.channel.unwrap(),
-        views: video.view_count.unwrap(),
-        upload_date: chrono::NaiveDateTime::new(chrono::NaiveDate::from_ymd_opt(uploadDate[0..=3].parse::<i32>().unwrap(), uploadDate[4..=5].parse::<u32>().unwrap(), uploadDate[6..=7].parse::<u32>().unwrap()).unwrap(), chrono::NaiveTime::from_num_seconds_from_midnight_opt(0, 0).unwrap()),
-        archived_date: chrono::Utc::now().naive_utc(),
-        duration: i32::try_from(video.duration.unwrap().as_i64().unwrap()).unwrap(),
-        thumbnail_address: video.thumbnail.unwrap(),
-        original_url: result.url.clone(),
-        status: immortalis_backend_common::database_models::video_status::VideoStatus::Archived,
-    };
-
-    insert_into(videos::table).values(video).execute(&mut db_connection).await.unwrap();
     
-    delete(scheduled_archivals::table).filter(scheduled_archivals::id.eq(result.id)).execute(&mut db_connection).await.unwrap();
-    println!("Archived and deleted entry: {} with url: {}", result.id, result.url);
+        delete(scheduled_archivals::table).filter(scheduled_archivals::id.eq(result.id)).execute(&mut db_connection).await.unwrap();
+        println!("Dequeued entry: {} with url: {}", result.id, result.url);
+
+    /*
+        let cmd = Command::new("yt-dlp")
+        .arg(&result.url)
+        .arg("-o")
+        .arg(
+            std::env::var("FILE_STORAGE_LOCATION")
+                .expect("FILE_STORAGE_LOCATION invalid or missing")
+                + "%(title)s.%(ext)s",
+        )
+        .arg("--embed-thumbnail")
+        .arg("--embed-metadata")
+        .arg("--embed-chapters")
+        .arg("--embed-info-json")
+        .arg("--embed-subs")
+        .arg("--wait-for-video")
+        .arg("60")
+        .arg("--live-from-start")
+        .arg("--print")
+        .arg(
+            std::env::var("FILE_STORAGE_LOCATION")
+            .expect("FILE_STORAGE_LOCATION invalid or missing")
+            + "%(title)s"
+        )
+        .arg("--no-simulate")
+        .output();
+
+        cmd.await.unwrap();
+        */
+
+        let uploadDate = video.upload_date.unwrap();
+        //println!("{:#?}", video.upload_date.unwrap());
+        let video = InsertableVideo {
+            title: video.title,
+            channel: video.channel.unwrap(),
+            views: video.view_count.unwrap(),
+            upload_date: chrono::NaiveDateTime::new(chrono::NaiveDate::from_ymd_opt(uploadDate[0..=3].parse::<i32>().unwrap(), uploadDate[4..=5].parse::<u32>().unwrap(), uploadDate[6..=7].parse::<u32>().unwrap()).unwrap(), chrono::NaiveTime::from_num_seconds_from_midnight_opt(0, 0).unwrap()),
+            archived_date: chrono::Utc::now().naive_utc(),
+            duration: i32::try_from(video.duration.unwrap().as_i64().unwrap()).unwrap(),
+            thumbnail_address: video.thumbnail.unwrap(),
+            original_url: result.url.clone(),
+            status: immortalis_backend_common::database_models::video_status::VideoStatus::BeingArchived,
+        };
+
+        insert_into(videos::table).values(video).execute(&mut db_connection).await.unwrap();
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(15)).await;
+
+        update(videos::table).set(videos::status.eq(VideoStatus::Archived)).execute(&mut db_connection).await.unwrap();
+    } else {
+        println!("{:#?}", yt_video_result);
+    }
+
+
 }
 /*
 async fn download() {
