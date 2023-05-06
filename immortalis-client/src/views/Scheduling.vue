@@ -1,10 +1,11 @@
 <template>
-    <v-container class="ma-10 ">
-      <v-col :cols="1" sm=12 class="pa-3 w-100">
-        
-        <div class="text-center text-h4"> Scheduling </div>
-        <v-text-field :label="'Url'" class="w-50 mt-10" v-model="url" ></v-text-field>
-        <v-btn @click="schedule">Schedule</v-btn>
+    <v-container class="ma-10">
+      <div class="text-center text-h4 d-flex justify-center"> Scheduling </div>
+      
+      <v-spacer></v-spacer>
+      <v-col :cols="6" sm=12 class="d-flex flex-column mt-15 mb-15">
+        <v-text-field :label="'Url'" class="mt-10 w-50 d-flex flex-column align-self-center" v-model="url" ></v-text-field>
+        <v-btn class="w-50 d-flex flex-column align-self-center" @click="schedule">Schedule</v-btn>
       </v-col>
 
       <v-data-table
