@@ -5,7 +5,8 @@ use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use immortalis_backend_common::database_models::scheduled_archival::ScheduledArchival;
-use immortalis_backend_common::schema::scheduled_archivals;
+use immortalis_backend_common::database_models::video::{Video, InsertableVideo};
+use immortalis_backend_common::schema::{scheduled_archivals, videos};
 use tokio::time::Duration;
 use dotenvy::dotenv;
 use async_process::Command;
@@ -29,14 +30,57 @@ async fn main() {
 
 async fn test(pool: Pool<AsyncPgConnection>) {
     let mut db_connection = &mut pool.get().await.unwrap();
-    let mut results = scheduled_archivals::table.limit(1).load::<ScheduledArchival>(&mut db_connection).await.unwrap();
+    let results = scheduled_archivals::table.limit(1).load::<ScheduledArchival>(&mut db_connection).await.unwrap();
     if results.len() == 0 {
         return;
     }
-    println!("Archiving entry: {} with url: {}", results[0].id, results[0].url);
+    let result = &results[0];
+    println!("Archiving entry: {} with url: {}", result.id, result.url);
+
+
+    let cmd = Command::new("yt-dlp")
+    .arg(&result.url)
+    .arg("-o")
+    .arg(
+        std::env::var("FILE_STORAGE_LOCATION")
+            .expect("FILE_STORAGE_LOCATION invalid or missing")
+            + "%(title)s.%(ext)s",
+    )
+    .arg("--embed-thumbnail")
+    .arg("--embed-metadata")
+    .arg("--embed-chapters")
+    .arg("--embed-info-json")
+    .arg("--embed-subs")
+    .arg("--wait-for-video")
+    .arg("60")
+    .arg("--live-from-start")
+    .arg("--print")
+    .arg(
+        std::env::var("FILE_STORAGE_LOCATION")
+        .expect("FILE_STORAGE_LOCATION invalid or missing")
+        + "%(title)s"
+    )
+    .arg("--no-simulate")
+    .output();
+
+    cmd.await.unwrap();
     
-    delete(scheduled_archivals::table).filter(scheduled_archivals::id.eq(results[0].id)).execute(&mut db_connection).await.unwrap();
-    println!("Archived and deleted entry: {} with url: {}", results[0].id, results[0].url);
+    let video = InsertableVideo {
+        title: "test".to_string(),
+        channel: "test".to_string(),
+        views: 4 as i64,
+        upload_date: chrono::Utc::now().naive_utc(),
+        archived_date: chrono::Utc::now().naive_utc(),
+        duration: 5,
+        thumbnail_address: "https://www.youtube.com/watch?v=qFcXSzEI5CQ/maxresdefault.jpg".to_string(),
+        original_url: result.url.clone(),
+        status: immortalis_backend_common::database_models::video_status::VideoStatus::Archived,
+    };
+
+    insert_into(videos::table).values(video).execute(&mut db_connection).await.unwrap();
+    
+    delete(scheduled_archivals::table).filter(scheduled_archivals::id.eq(result.id)).execute(&mut db_connection).await.unwrap();
+    println!("Archived and deleted entry: {} with url: {}", result.id, result.url);
 }
 /*
 async fn download() {
