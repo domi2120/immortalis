@@ -35,6 +35,11 @@
         title: 'ScheduledAt',
         value: 'scheduledAt',
         align: 'start'
+      },
+      {
+        title: 'Waiting untill',
+        value: 'notBefore',
+        align: 'start'
       }
     ]
   );
