@@ -13,7 +13,7 @@
             {{ props.video.value.channel }} <br>
             {{ numberToDelimetedString(props.video.value.views, ",") }} views · uploaded: {{ new Date(props.video.value.uploadDate).toLocaleDateString() }} · archived: {{ new Date(props.video.value.archivedDate).toLocaleDateString() }} <br>
             <v-select :disabled="props.video.value.downloads.length < 1" label="Download" :items="props.video.value.downloads" v-model="props.video.value.selectedDownload" class="w-40" return-object/>
-            <v-btn @click="download(video)" :disabled="props.video.value.downloads.length < 1">Download</v-btn>
+            <v-btn :href="'/api/download/' + encodeURI(props.video.value.title) + '.mkv'" :disabled="props.video.value.status != 'Archived'" @click="download(video)" >Download</v-btn>
             <v-btn :href="props.video.value.originalUrl" class="ma-2">Watch Original</v-btn>
             <v-chip>{{ props.video.value.status }}</v-chip>
           </v-col>
@@ -39,8 +39,9 @@ function numberToDelimetedString(x: number, delimeter: string) {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, delimeter);
 }
 
-function download(video: any) {
-    console.log(video.title + " " + video.selectedDownload.value);
+async function download(video: any) {
+  // not currently in use
+  console.log(video.title + " " + video.selectedDownload.value);
 }
 
 </script>

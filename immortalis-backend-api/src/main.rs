@@ -95,6 +95,8 @@ async fn main() -> std::io::Result<()> {
         std::env::var("DATABASE_URL").unwrap(),
     );
     let pool = Pool::builder(config).build().unwrap();
+    let mut file_storagE_location = std::env::var("FILE_STORAGE_LOCATION").expect("FILE_STORAGE_LOCATION invalid or missing").to_string();
+    file_storagE_location = file_storagE_location[..file_storagE_location.len()].to_string();
 
     HttpServer::new(move || {
         App::new()
@@ -105,6 +107,7 @@ async fn main() -> std::io::Result<()> {
             .service(search)
             .service(schedule)
             .service(get_schedules)
+            .service(actix_files::Files::new("/download", &file_storagE_location).show_files_listing())
     })
     .bind(("0.0.0.0", 8080))?
     .bind("[::1]:8080")?
