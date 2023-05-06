@@ -47,7 +47,7 @@ async fn schedule(schedule_request: web::Json<ScheduleRequest>, app_state: web::
     }
 
     // for the moment, tracking is mixed into the schedule endpoint for simplicity
-    if schedule_request.url.contains("channel") || schedule_request.url.contains("list") {
+    if schedule_request.url.contains("channel") || schedule_request.url.contains("@") || schedule_request.url.contains("list") {
         insert_into(tracked_collections::table).values(tracked_collections::url.eq(&schedule_request.url)).execute(&mut app_state.db_connection_pool.get().await.unwrap()).await.unwrap();
         return HttpResponse::Ok();
     }

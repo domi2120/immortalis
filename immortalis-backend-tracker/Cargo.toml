@@ -14,3 +14,5 @@ tokio = { version="1", features=["full"]}
 async-process = "1.6.0"
 chrono = { version= "0.4.24", features = ["serde"] }
 youtube_dl = { version ="0.8.0", features = ["tokio"]}
+serde = { version= "1.0.152", features = ["std", "derive"] }
+serde_json = "1"
