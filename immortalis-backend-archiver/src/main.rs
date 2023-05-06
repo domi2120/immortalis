@@ -82,15 +82,19 @@ async fn test(pool: Pool<AsyncPgConnection>) {
         cmd.await.unwrap();
         */
 
-        let uploadDate = video.upload_date.unwrap();
-        //println!("{:#?}", video.upload_date.unwrap());
+        let upload_date = video.upload_date.unwrap();
+        let video_duration = match video.duration {
+            Some(x) => i32::try_from(x.as_i64().unwrap()).unwrap(),
+            None => 0,
+        };
+        
         let video = InsertableVideo {
             title: video.title,
             channel: video.channel.unwrap(),
             views: video.view_count.unwrap(),
-            upload_date: chrono::NaiveDateTime::new(chrono::NaiveDate::from_ymd_opt(uploadDate[0..=3].parse::<i32>().unwrap(), uploadDate[4..=5].parse::<u32>().unwrap(), uploadDate[6..=7].parse::<u32>().unwrap()).unwrap(), chrono::NaiveTime::from_num_seconds_from_midnight_opt(0, 0).unwrap()),
+            upload_date: chrono::NaiveDateTime::new(chrono::NaiveDate::from_ymd_opt(upload_date[0..=3].parse::<i32>().unwrap(), upload_date[4..=5].parse::<u32>().unwrap(), upload_date[6..=7].parse::<u32>().unwrap()).unwrap(), chrono::NaiveTime::from_num_seconds_from_midnight_opt(0, 0).unwrap()),
             archived_date: chrono::Utc::now().naive_utc(),
-            duration: i32::try_from(video.duration.unwrap().as_i64().unwrap()).unwrap(),
+            duration: video_duration,
             thumbnail_address: video.thumbnail.unwrap(),
             original_url: result.url.clone(),
             status: immortalis_backend_common::database_models::video_status::VideoStatus::BeingArchived,
