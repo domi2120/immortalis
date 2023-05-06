@@ -1,2 +1,2 @@
-drop TABLE videoDownloads;
+drop TABLE downloads;
 drop table videos;
