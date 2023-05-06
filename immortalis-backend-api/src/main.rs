@@ -45,8 +45,10 @@ async fn schedule(schedule_request: web::Json<ScheduleRequest>,app_state: web::D
     if schedule_request.url.len() < 1 {
         return HttpResponse::BadRequest();
     }
+    
+    let inserted = insert_into(scheduled_archivals::table).values(scheduled_archivals::url.eq(&schedule_request.url)).on_conflict_do_nothing().execute(&mut app_state.db_connection_pool.get().await.unwrap()).await.unwrap();
+    println!("Scheduled {} entries", inserted);
 
-    insert_into(scheduled_archivals::table).values(scheduled_archivals::url.eq(&schedule_request.url)).execute(&mut app_state.db_connection_pool.get().await.unwrap()).await.unwrap();
     HttpResponse::Ok()
 }
 
