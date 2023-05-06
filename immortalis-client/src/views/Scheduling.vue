@@ -62,6 +62,7 @@
       }
     );
     schedules.value = await (await fetch("/api/schedule")).json();
+    url.value = "";
   }
 </script>
   
