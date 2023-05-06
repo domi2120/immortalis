@@ -20,6 +20,7 @@ diesel::table! {
         id -> Int4,
         url -> Varchar,
         scheduled_at -> Timestamp,
+        not_before -> Timestamp,
     }
 }
 

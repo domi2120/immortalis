@@ -11,4 +11,5 @@ pub struct ScheduledArchival {
     pub id: i32,
     pub url: String,
     pub scheduled_at: chrono::NaiveDateTime,
+    pub not_before: chrono::NaiveDateTime
 }

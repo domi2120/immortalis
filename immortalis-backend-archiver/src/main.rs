@@ -1,4 +1,5 @@
 use std::{collections::HashMap, fs, path::PathBuf, borrow::Cow};
+use chrono::Duration;
 use diesel::associations::HasTable;
 use diesel::query_dsl::methods::LockingDsl;
 use diesel::{GroupedBy, insert_into, ExpressionMethods, delete, update};
@@ -10,7 +11,6 @@ use immortalis_backend_common::database_models::scheduled_archival::ScheduledArc
 use immortalis_backend_common::database_models::video::{Video, InsertableVideo};
 use immortalis_backend_common::database_models::video_status::VideoStatus;
 use immortalis_backend_common::schema::{scheduled_archivals, videos};
-use tokio::time::Duration;
 use dotenvy::dotenv;
 use async_process::Command;
 
@@ -24,7 +24,7 @@ async fn main() {
     );
     let pool = Pool::builder(config).build().unwrap();
 
-    let mut interval_timer = tokio::time::interval(Duration::from_secs(5));
+    let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
     loop {
         interval_timer.tick().await;
         let pool_instance = pool.clone();
@@ -36,7 +36,7 @@ async fn main() {
 async fn test(pool: Pool<AsyncPgConnection>) {
     let mut db_connection = &mut pool.get().await.unwrap();
     
-    let results = scheduled_archivals::table.limit(1).load::<ScheduledArchival>(&mut db_connection).await.unwrap();
+    let results = scheduled_archivals::table.limit(1).filter(scheduled_archivals::not_before.lt(chrono::Utc::now().naive_utc())).load::<ScheduledArchival>(&mut db_connection).await.unwrap();
     
     if results.len() == 0 {
         return;
@@ -102,7 +102,9 @@ async fn test(pool: Pool<AsyncPgConnection>) {
 
         update(videos::table).set(videos::status.eq(VideoStatus::Archived)).execute(&mut db_connection).await.unwrap();
     } else {
-        println!("{:#?}", yt_video_result);
+        // try again in 10 minutes
+        update(scheduled_archivals::table).set(scheduled_archivals::not_before.eq(chrono::Utc::now().naive_utc().checked_add_signed(Duration::minutes(10)).unwrap())).execute(&mut db_connection).await.unwrap();
+        println!("Received error {:#?}. Video {} will be retried in 10 minutes", yt_video_result, result.url);
     }
 
 
