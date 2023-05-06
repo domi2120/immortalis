@@ -43,13 +43,13 @@
   const schedules = ref([]);
   onMounted(async () => {
     schedules.value = await (await fetch("/api/schedule")).json();
-    setTimeout(async () => {
+    setInterval(async () => {
       schedules.value = await (await fetch("/api/schedule")).json();
-    }, 5 * 1000);
+    }, 2 * 1000);
   })
   
   async function schedule() {
-    fetch("/api/schedule",
+    await fetch("/api/schedule",
     {
       method: "POST",
       body: JSON.stringify(
@@ -58,10 +58,10 @@
         }),
         headers: {
           "Content-Type": "application/json",
-          // 'Content-Type': 'application/x-www-form-urlencoded',
         }
       }
     );
+    schedules.value = await (await fetch("/api/schedule")).json();
   }
 </script>
   
