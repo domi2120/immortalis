@@ -29,6 +29,11 @@ struct SearchQuery {
 
 #[post("schedule")]
 async fn schedule(schedule_request: web::Json<ScheduleRequest>,app_state: web::Data<AppState>) -> impl Responder {
+
+    if schedule_request.url.len() < 1 {
+        return HttpResponse::BadRequest();
+    }
+
     insert_into(scheduled_archivals::table).values(scheduled_archivals::url.eq(&schedule_request.url)).execute(&mut app_state.db_connection_pool.get().await.unwrap()).await.unwrap();
     HttpResponse::Ok()
 }

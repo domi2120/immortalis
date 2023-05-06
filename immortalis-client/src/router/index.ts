@@ -21,6 +21,10 @@ const routes = [
     path: "/search",
     component: () => import(/* webpackChunkName: "home" */ '@/views/Search.vue'),
     props: (route: RouteLocationNormalizedLoaded) => ({ searchText: route.query.searchText?.toString() ?? ""})
+  },
+  {
+    path: "/scheduling",
+    component: () => import("@/views/Scheduling.vue"),
   }
 ]
 

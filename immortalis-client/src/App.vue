@@ -3,21 +3,17 @@
     <v-main>
       <v-app-bar>
         <v-app-bar-nav-icon @click="drawerOpened= !drawerOpened" />
-        <v-toolbar-title style="cursor: pointer" @click="$router.push('/')">Immortalis</v-toolbar-title>
+        <v-toolbar-title style="cursor: pointer" @click="$router.push('/'); ">Immortalis</v-toolbar-title>
         <v-text-field label="Search" append-inner-icon="mdi-magnify" v-model="searchText" clearable class="w-50 mt-5 h-80" @keydown.enter="$router.push({ path: '/search', query: {searchText: searchText}})">
         </v-text-field>
         <v-spacer></v-spacer>
       </v-app-bar>
       <v-navigation-drawer v-model="drawerOpened" permanent>
-        <!-- 
-        <v-list>
-          <v-list-item 
-            v-for="video in videos"
-            :key="video.title"
-            :title="video.title">
+        <v-list nav :mandatory="true">
+          <v-list-item :value="'Home'" :title="'Home'"  @click="$router.push('/')" active></v-list-item>
+          <v-list-item :value="'Scheduling'" :title="'Scheduling'"  @click="$router.push('/scheduling')">
           </v-list-item>
         </v-list>
-      -->
       </v-navigation-drawer>
       <router-view></router-view>
     </v-main>
