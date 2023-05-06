@@ -16,6 +16,14 @@ diesel::table! {
 }
 
 diesel::table! {
+    scheduled_archivals (id) {
+        id -> Int4,
+        url -> Varchar,
+        scheduled_at -> Timestamp,
+    }
+}
+
+diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::VideoStatus;
 
@@ -35,4 +43,8 @@ diesel::table! {
 
 diesel::joinable!(downloads -> videos (video_id));
 
-diesel::allow_tables_to_appear_in_same_query!(downloads, videos,);
+diesel::allow_tables_to_appear_in_same_query!(
+    downloads,
+    scheduled_archivals,
+    videos,
+);

@@ -1,9 +1,9 @@
-use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, post};
 use immortalis_backend_common::data_transfer_models::video_with_downloads::VideoWithDownload;
 use immortalis_backend_common::database_models::{download::Download, video::Video};
-use immortalis_backend_common::schema::videos;
+use immortalis_backend_common::schema::{videos, scheduled_archivals};
 
-use diesel::GroupedBy;
+use diesel::{GroupedBy, insert_into, ExpressionMethods};
 use diesel::{BelongingToDsl, PgTextExpressionMethods, QueryDsl};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
@@ -18,8 +18,19 @@ async fn health() -> impl Responder {
 }
 
 #[derive(Deserialize)]
+struct ScheduleRequest {
+    url: String
+}
+
+#[derive(Deserialize)]
 struct SearchQuery {
     term: Option<String>,
+}
+
+#[post("schedule")]
+async fn schedule(schedule_request: web::Json<ScheduleRequest>,app_state: web::Data<AppState>) -> impl Responder {
+    insert_into(scheduled_archivals::table).values(scheduled_archivals::url.eq(&schedule_request.url)).execute(&mut app_state.db_connection_pool.get().await.unwrap()).await.unwrap();
+    HttpResponse::Ok()
 }
 
 #[get("/search")]
@@ -73,6 +84,7 @@ async fn main() -> std::io::Result<()> {
             }))
             .service(health)
             .service(search)
+            .service(schedule)
     })
     .bind(("0.0.0.0", 8080))?
     .bind("[::1]:8080")?
