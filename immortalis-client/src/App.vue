@@ -3,8 +3,8 @@
     <v-main>
       <v-app-bar>
         <v-app-bar-nav-icon @click="drawerOpened= !drawerOpened" />
-        <v-toolbar-title>Immortalis</v-toolbar-title>
-        <v-text-field label="Search" append-inner-icon="mdi-magnify" v-model="searchText" clearable class="w-50 mt-5 h-80" @keydown.enter="search">
+        <v-toolbar-title style="cursor: pointer" @click="$router.push('/')">Immortalis</v-toolbar-title>
+        <v-text-field label="Search" append-inner-icon="mdi-magnify" v-model="searchText" clearable class="w-50 mt-5 h-80" @keydown.enter="$router.push({ path: '/', query: {searchText: searchText}})">
         </v-text-field>
         <v-spacer></v-spacer>
       </v-app-bar>
@@ -19,11 +19,7 @@
         </v-list>
       -->
       </v-navigation-drawer>
-      <v-container class="ma-10">
-        <v-row v-for="video in videos" >
-        <video-entry :video=ref(video) />
-        </v-row>
-      </v-container>
+      <router-view></router-view>
     </v-main>
   </v-app>
 </template>
@@ -31,7 +27,6 @@
 <script setup lang="ts">
   import { Ref, ref } from 'vue';
   import { Video } from '@/models/video';
-  import VideoEntry from './components/VideoEntry.vue';
 
   const drawerOpened = ref(false);
   let videos: Ref<Video[]> = ref([]);
