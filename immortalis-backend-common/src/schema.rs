@@ -25,6 +25,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    tracked_collections (id) {
+        id -> Int4,
+        url -> Varchar,
+        tracking_started_at -> Timestamp,
+        last_checked -> Nullable<Timestamp>,
+    }
+}
+
+diesel::table! {
     use diesel::sql_types::*;
     use super::sql_types::VideoStatus;
 
@@ -47,5 +56,6 @@ diesel::joinable!(downloads -> videos (video_id));
 diesel::allow_tables_to_appear_in_same_query!(
     downloads,
     scheduled_archivals,
+    tracked_collections,
     videos,
 );

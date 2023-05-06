@@ -1,7 +1,7 @@
 use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, post};
 use immortalis_backend_common::data_transfer_models::video_with_downloads::VideoWithDownload;
 use immortalis_backend_common::database_models::{download::Download, video::Video, scheduled_archival::ScheduledArchival};
-use immortalis_backend_common::schema::{videos, scheduled_archivals};
+use immortalis_backend_common::schema::{videos, scheduled_archivals, tracked_collections};
 
 use diesel::{GroupedBy, insert_into, ExpressionMethods};
 use diesel::{BelongingToDsl, PgTextExpressionMethods, QueryDsl};
@@ -40,17 +40,25 @@ struct SearchQuery {
 }
 
 #[post("schedule")]
-async fn schedule(schedule_request: web::Json<ScheduleRequest>,app_state: web::Data<AppState>) -> impl Responder {
+async fn schedule(schedule_request: web::Json<ScheduleRequest>, app_state: web::Data<AppState>) -> impl Responder {
 
     if schedule_request.url.len() < 1 {
         return HttpResponse::BadRequest();
     }
-    
+
+    // for the moment, tracking is mixed into the schedule endpoint for simplicity
+    if schedule_request.url.contains("channel") || schedule_request.url.contains("list") {
+        insert_into(tracked_collections::table).values(tracked_collections::url.eq(&schedule_request.url)).execute(&mut app_state.db_connection_pool.get().await.unwrap()).await.unwrap();
+        return HttpResponse::Ok();
+    }
+
     let inserted = insert_into(scheduled_archivals::table).values(scheduled_archivals::url.eq(&schedule_request.url)).on_conflict_do_nothing().execute(&mut app_state.db_connection_pool.get().await.unwrap()).await.unwrap();
     println!("Scheduled {} entries", inserted);
 
     HttpResponse::Ok()
 }
+
+
 
 #[get("/search")]
 async fn search(query: web::Query<SearchQuery>, app_state: web::Data<AppState>) -> impl Responder {
