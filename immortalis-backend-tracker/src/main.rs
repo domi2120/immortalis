@@ -71,8 +71,25 @@ async fn track(pool: Pool<AsyncPgConnection>) {
     let value: Value = serde_json::from_reader(cmd.unwrap().stdout.as_slice()).unwrap();
     let is_playlist = value["_type"] == serde_json::json!("playlist");
     let mut youtube_dl_output: YoutubeDlOutput;
+
+    // @TODO scheduled streams will end up returning "null" in json, causing the thread to panic. This fixes it but seems kinda hacky
     if is_playlist {
-        let playlist: youtube_dl::Playlist = serde_json::from_value(value).unwrap();
+        let fixed_playlist: FixedPlaylist = serde_json::from_value(value).unwrap();
+        let c = Some(fixed_playlist.entries.unwrap().iter().filter(|x| x.is_some()).map(|x| x.clone().unwrap()).collect());
+        let playlist: youtube_dl::Playlist = Playlist {
+            entries: c,
+            extractor: fixed_playlist.extractor,
+            extractor_key: fixed_playlist.extractor_key,
+            id: fixed_playlist.id,
+            title: fixed_playlist.title,
+            uploader: fixed_playlist.uploader,
+            uploader_id: fixed_playlist.uploader_id,
+            uploader_url: fixed_playlist.uploader_url,
+            webpage_url: fixed_playlist.webpage_url,
+            webpage_url_basename: fixed_playlist.webpage_url_basename,
+            thumbnails: fixed_playlist.thumbnails
+        };
+        
         youtube_dl_output= YoutubeDlOutput::Playlist(Box::new(playlist))
     } else {
         let video: youtube_dl::SingleVideo = serde_json::from_value(value).unwrap();
@@ -85,17 +102,34 @@ async fn track(pool: Pool<AsyncPgConnection>) {
             
             let url =video.webpage_url.unwrap();
 
-            if (url.ends_with("videos") || url.ends_with("streams") || url.ends_with("shorts")) {
+            if (url.ends_with("videos") || url.ends_with("streams") || url.ends_with("shorts") || url.ends_with("videos/") || url.ends_with("streams/") || url.ends_with("shorts/")) {
 
-                insert_into(tracked_collections::table).values(tracked_collections::url.eq(&url)).execute(&mut db_connection).await.unwrap();
+                insert_into(tracked_collections::table).values(tracked_collections::url.eq(&url)).on_conflict_do_nothing().execute(&mut db_connection).await.unwrap();
                 continue;
             }
 
             println!("Scheduling {}", url);
 
-            insert_into(scheduled_archivals::table).values(scheduled_archivals::url.eq(url)).execute(&mut db_connection).await.unwrap();
+            insert_into(scheduled_archivals::table).values(scheduled_archivals::url.eq(url)).on_conflict_do_nothing().execute(&mut db_connection).await.unwrap();
         
         }
     }
 
+}
+
+use serde::{Serialize, Deserialize};
+
+#[derive(Clone, Serialize, Deserialize, Debug, Default)]
+pub struct FixedPlaylist {
+    pub entries: Option<Vec<Option<youtube_dl::SingleVideo>>>,
+    pub extractor: Option<String>,
+    pub extractor_key: Option<String>,
+    pub id: Option<String>,
+    pub title: Option<String>,
+    pub uploader: Option<String>,
+    pub uploader_id: Option<String>,
+    pub uploader_url: Option<String>,
+    pub webpage_url: Option<String>,
+    pub webpage_url_basename: Option<String>,
+    pub thumbnails: Option<Vec<youtube_dl::Thumbnail>>,
 }
