@@ -161,6 +161,7 @@ async fn main() -> std::io::Result<()> {
                 actix_files::Files::new("/download", &file_storage_location).show_files_listing(),
             )
             .service(get_tracked_collection)
+            .service(tracked_collection)
     })
     .bind(("0.0.0.0", 8080))?
     .bind("[::1]:8080")? // can require special config in docker
