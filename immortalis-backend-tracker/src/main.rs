@@ -10,6 +10,7 @@ use immortalis_backend_common::env_var_names;
 use immortalis_backend_common::schema::{scheduled_archivals, tracked_collections};
 
 use serde_json::Value;
+use tracing::info;
 use youtube_dl::{Playlist, YoutubeDlOutput};
 
 #[tokio::main]
@@ -70,6 +71,7 @@ async fn track(pool: Pool<AsyncPgConnection>) {
         .unwrap();
 
     if results.is_empty() {
+        info!("No due TrackedCollections found");
         return;
     }
 
@@ -82,6 +84,8 @@ async fn track(pool: Pool<AsyncPgConnection>) {
         .execute(&mut db_connection)
         .await
         .unwrap();
+
+    info!("Checking collection id: {} url: {}", result.id, result.url);
 
     // yt-dlp exits with 1 if there are videos scheduled for the future. This causes YoutubeDL to return an error
     /*
@@ -152,17 +156,17 @@ async fn track(pool: Pool<AsyncPgConnection>) {
                     .execute(&mut db_connection)
                     .await
                     .unwrap();
+                info!("Inserted {} into TrackedCollections", url);
                 continue;
             }
 
-            println!("Scheduling {}", url);
-
             insert_into(scheduled_archivals::table)
-                .values(scheduled_archivals::url.eq(url))
+                .values(scheduled_archivals::url.eq(&url))
                 .on_conflict_do_nothing()
                 .execute(&mut db_connection)
                 .await
                 .unwrap();
+            info!("Scheduled {} for archival", url)
         }
     }
 }
