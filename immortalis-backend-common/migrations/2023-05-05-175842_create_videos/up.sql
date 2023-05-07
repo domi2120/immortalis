@@ -7,7 +7,7 @@ CREATE TABLE videos (
   archived_date timestamp without time zone NOT NULL,
   duration int NOT NULL,
   thumbnail_address varchar NOT NULL,
-  original_url varchar NOT NULL,
+  original_url varchar NOT NULL UNIQUE,
   PRIMARY KEY(id)
 );
 
