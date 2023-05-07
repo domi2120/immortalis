@@ -3,7 +3,7 @@
         <v-spacer></v-spacer>
         <v-col :cols="1" sm=3 class="pa-3">
             <v-img :src="props.video.value.thumbnailAddress" class="d-flex align-end" >
-              <v-chip class="d-float float-right ">
+              <v-chip class="d-float float-right " variant="elevated">
                 {{ new Date(props.video.value.duration * 1000).toISOString().slice(11, 19) }}
               </v-chip>
             </v-img>
