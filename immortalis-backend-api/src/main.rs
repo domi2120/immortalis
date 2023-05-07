@@ -43,6 +43,17 @@ async fn get_tracked_collection(app_state: web::Data<AppState>) -> impl Responde
     HttpResponse::Ok().json(results)
 }
 
+#[post("tracked_collection")]
+async fn tracked_collection(schedule_request: web::Json<ScheduleRequest>, app_state: web::Data<AppState>) -> impl Responder {
+
+    insert_into(tracked_collections::table)
+        .values(tracked_collections::url.eq(&schedule_request.url))
+        .execute(&mut app_state.db_connection_pool.get().await.unwrap())
+        .await
+        .unwrap();
+    HttpResponse::Ok()
+}
+
 #[derive(Deserialize)]
 struct ScheduleRequest {
     url: String,
@@ -62,26 +73,20 @@ async fn schedule(
         return HttpResponse::BadRequest();
     }
 
-    // for the moment, tracking is mixed into the schedule endpoint for simplicity
-    if schedule_request.url.contains("channel")
-        || schedule_request.url.contains('@')
-        || schedule_request.url.contains("list")
-    {
-        insert_into(tracked_collections::table)
-            .values(tracked_collections::url.eq(&schedule_request.url))
-            .execute(&mut app_state.db_connection_pool.get().await.unwrap())
-            .await
-            .unwrap();
-        return HttpResponse::Ok();
-    }
+    // trim query params other than 'v' which is the video (trims for example playlists)
+    let url = url::Url::parse(&schedule_request.url).unwrap();
+    let view_query_param = url.query_pairs().filter(|x| x.0 == "v");
+    let mut new_url = url.clone();
+    new_url.query_pairs_mut().clear().extend_pairs(view_query_param);
+    let video_url = new_url.to_string();
 
     let inserted = insert_into(scheduled_archivals::table)
-        .values(scheduled_archivals::url.eq(&schedule_request.url))
+        .values(scheduled_archivals::url.eq(&video_url))
         .on_conflict_do_nothing()
         .execute(&mut app_state.db_connection_pool.get().await.unwrap())
         .await
         .unwrap();
-    info!("Scheduled {} entries", inserted);
+    info!("Scheduled {} entries for url {}", inserted, video_url);
 
     HttpResponse::Ok()
 }
