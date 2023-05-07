@@ -1,9 +1,11 @@
-use actix_web::{get, web, App, HttpResponse, HttpServer, Responder, post};
+use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use immortalis_backend_common::data_transfer_models::video_with_downloads::VideoWithDownload;
-use immortalis_backend_common::database_models::{download::Download, video::Video, scheduled_archival::ScheduledArchival};
-use immortalis_backend_common::schema::{videos, scheduled_archivals, tracked_collections};
+use immortalis_backend_common::database_models::{
+    download::Download, scheduled_archival::ScheduledArchival, video::Video,
+};
+use immortalis_backend_common::schema::{scheduled_archivals, tracked_collections, videos};
 
-use diesel::{GroupedBy, insert_into, ExpressionMethods};
+use diesel::{insert_into, ExpressionMethods, GroupedBy};
 use diesel::{BelongingToDsl, PgTextExpressionMethods, QueryDsl};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
@@ -19,19 +21,19 @@ async fn health() -> impl Responder {
 
 #[get("/schedule")]
 async fn get_schedules(app_state: web::Data<AppState>) -> impl Responder {
-    let mut results = scheduled_archivals::table.into_boxed();
+    let results = scheduled_archivals::table.into_boxed();
 
     let results = results
         .load::<ScheduledArchival>(&mut app_state.db_connection_pool.get().await.unwrap())
         .await
         .expect("Error loading posts");
-    
+
     HttpResponse::Ok().json(results)
 }
 
 #[derive(Deserialize)]
 struct ScheduleRequest {
-    url: String
+    url: String,
 }
 
 #[derive(Deserialize)]
@@ -40,25 +42,37 @@ struct SearchQuery {
 }
 
 #[post("schedule")]
-async fn schedule(schedule_request: web::Json<ScheduleRequest>, app_state: web::Data<AppState>) -> impl Responder {
-
-    if schedule_request.url.len() < 1 {
+async fn schedule(
+    schedule_request: web::Json<ScheduleRequest>,
+    app_state: web::Data<AppState>,
+) -> impl Responder {
+    if schedule_request.url.is_empty() {
         return HttpResponse::BadRequest();
     }
 
     // for the moment, tracking is mixed into the schedule endpoint for simplicity
-    if schedule_request.url.contains("channel") || schedule_request.url.contains("@") || schedule_request.url.contains("list") {
-        insert_into(tracked_collections::table).values(tracked_collections::url.eq(&schedule_request.url)).execute(&mut app_state.db_connection_pool.get().await.unwrap()).await.unwrap();
+    if schedule_request.url.contains("channel")
+        || schedule_request.url.contains('@')
+        || schedule_request.url.contains("list")
+    {
+        insert_into(tracked_collections::table)
+            .values(tracked_collections::url.eq(&schedule_request.url))
+            .execute(&mut app_state.db_connection_pool.get().await.unwrap())
+            .await
+            .unwrap();
         return HttpResponse::Ok();
     }
 
-    let inserted = insert_into(scheduled_archivals::table).values(scheduled_archivals::url.eq(&schedule_request.url)).on_conflict_do_nothing().execute(&mut app_state.db_connection_pool.get().await.unwrap()).await.unwrap();
+    let inserted = insert_into(scheduled_archivals::table)
+        .values(scheduled_archivals::url.eq(&schedule_request.url))
+        .on_conflict_do_nothing()
+        .execute(&mut app_state.db_connection_pool.get().await.unwrap())
+        .await
+        .unwrap();
     println!("Scheduled {} entries", inserted);
 
     HttpResponse::Ok()
 }
-
-
 
 #[get("/search")]
 async fn search(query: web::Query<SearchQuery>, app_state: web::Data<AppState>) -> impl Responder {
@@ -100,12 +114,14 @@ struct AppState {
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
-        std::env::var("DATABASE_URL").unwrap()
+        std::env::var("DATABASE_URL").unwrap(),
     );
-    
+
     let pool = Pool::builder(config).build().unwrap();
-    let mut file_storagE_location = std::env::var("FILE_STORAGE_LOCATION").expect("FILE_STORAGE_LOCATION invalid or missing").to_string();
-    file_storagE_location = file_storagE_location[..file_storagE_location.len()].to_string();
+    let mut file_storage_location = std::env::var("FILE_STORAGE_LOCATION")
+        .expect("FILE_STORAGE_LOCATION invalid or missing")
+        .to_string();
+    file_storage_location = file_storage_location[..file_storage_location.len()].to_string();
 
     HttpServer::new(move || {
         App::new()
@@ -116,10 +132,12 @@ async fn main() -> std::io::Result<()> {
             .service(search)
             .service(schedule)
             .service(get_schedules)
-            .service(actix_files::Files::new("/download", &file_storagE_location).show_files_listing())
+            .service(
+                actix_files::Files::new("/download", &file_storage_location).show_files_listing(),
+            )
     })
     .bind(("0.0.0.0", 8080))?
-//    .bind("[::1]:8080")? // can require special config in docker
+    .bind("[::1]:8080")? // can require special config in docker
     .run()
     .await
 }
