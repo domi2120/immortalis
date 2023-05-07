@@ -1,5 +1,6 @@
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use immortalis_backend_common::data_transfer_models::video_with_downloads::VideoWithDownload;
+use immortalis_backend_common::database_models::tracked_collection::TrackedCollection;
 use immortalis_backend_common::database_models::{
     download::Download, scheduled_archival::ScheduledArchival, video::Video,
 };
@@ -29,6 +30,13 @@ async fn get_schedules(app_state: web::Data<AppState>) -> impl Responder {
         .await
         .expect("Error loading posts");
 
+    HttpResponse::Ok().json(results)
+}
+
+#[get("tracked_collection")]
+async fn get_tracked_collection(app_state: web::Data<AppState>) -> impl Responder {
+
+    let results = tracked_collections::table.load::<TrackedCollection>(&mut app_state.db_connection_pool.get().await.unwrap()).await.unwrap();
     HttpResponse::Ok().json(results)
 }
 
@@ -136,6 +144,7 @@ async fn main() -> std::io::Result<()> {
             .service(
                 actix_files::Files::new("/download", &file_storage_location).show_files_listing(),
             )
+            .service(get_tracked_collection)
     })
     .bind(("0.0.0.0", 8080))?
     .bind("[::1]:8080")? // can require special config in docker

@@ -25,6 +25,10 @@ const routes = [
   {
     path: "/scheduling",
     component: () => import("@/views/Scheduling.vue"),
+  },
+  {
+    path: "/tracked-collections",
+    component: () => import("@/views/TrackedCollections.vue"),
   }
 ]
 
