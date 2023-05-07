@@ -20,12 +20,11 @@ async fn main() {
     dotenv().ok();
 
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-    .with_max_level(tracing::Level::INFO)
-    .event_format(tracing_subscriber::fmt::format::json())
-    .finish();
+        .with_max_level(tracing::Level::INFO)
+        .event_format(tracing_subscriber::fmt::format::json())
+        .finish();
 
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("setting default subscriber failed");
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
         std::env::var(env_var_names::DATABASE_URL).unwrap(),
@@ -33,9 +32,13 @@ async fn main() {
     let application_connection_pool = Pool::builder(config).build().unwrap();
 
     // spawn 4 workers
-    for _ in 0..std::env::var(env_var_names::TRACKER_THREAD_COUNT).unwrap().parse::<i32>().unwrap() {
+    for _ in 0..std::env::var(env_var_names::TRACKER_THREAD_COUNT)
+        .unwrap()
+        .parse::<i32>()
+        .unwrap()
+    {
         let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
-        
+
         let worker_connection_pool = application_connection_pool.clone();
         tokio::spawn(async move {
             let task_connection_pool = worker_connection_pool.clone();
@@ -78,8 +81,13 @@ async fn test(pool: Pool<AsyncPgConnection>) {
             .execute(&mut db_connection)
             .await
             .unwrap();
-        info!(result.id = result.id, result.url = result.url, "Dequeued entry: {} with url: {}", result.id, result.url);
-
+        info!(
+            result.id = result.id,
+            result.url = result.url,
+            "Dequeued entry: {} with url: {}",
+            result.id,
+            result.url
+        );
 
         let upload_date = yt_dl_video.upload_date.unwrap();
         let video_duration = match yt_dl_video.duration {
@@ -116,33 +124,36 @@ async fn test(pool: Pool<AsyncPgConnection>) {
             .unwrap();
 
         // if SKIP_DOWNLOAD is set, we skip the download
-        if std::env::var(env_var_names::SKIP_DOWNLOAD).unwrap_or_default().is_empty() {
+        if std::env::var(env_var_names::SKIP_DOWNLOAD)
+            .unwrap_or_default()
+            .is_empty()
+        {
             let cmd = Command::new("yt-dlp")
-                    .arg(&result.url)
-                    .arg("-o")
-                    .arg(
-                        std::env::var(env_var_names::FILE_STORAGE_LOCATION)
-                            .expect("FILE_STORAGE_LOCATION invalid or missing")
-                            + "%(title)s.%(ext)s",
-                    )
-                    .arg("--embed-thumbnail")
-                    .arg("--embed-metadata")
-                    .arg("--embed-chapters")
-                    .arg("--embed-info-json")
-                    .arg("--embed-subs")
-                    .arg("--wait-for-video")
-                    .arg("60")
-                    .arg("--live-from-start")
-                    .arg("--print")
-                    .arg(
-                        std::env::var(env_var_names::FILE_STORAGE_LOCATION)
-                            .expect("FILE_STORAGE_LOCATION invalid or missing")
-                            + "%(title)s",
-                    )
-                    .arg("--no-simulate")
-                    .output();
+                .arg(&result.url)
+                .arg("-o")
+                .arg(
+                    std::env::var(env_var_names::FILE_STORAGE_LOCATION)
+                        .expect("FILE_STORAGE_LOCATION invalid or missing")
+                        + "%(title)s.%(ext)s",
+                )
+                .arg("--embed-thumbnail")
+                .arg("--embed-metadata")
+                .arg("--embed-chapters")
+                .arg("--embed-info-json")
+                .arg("--embed-subs")
+                .arg("--wait-for-video")
+                .arg("60")
+                .arg("--live-from-start")
+                .arg("--print")
+                .arg(
+                    std::env::var(env_var_names::FILE_STORAGE_LOCATION)
+                        .expect("FILE_STORAGE_LOCATION invalid or missing")
+                        + "%(title)s",
+                )
+                .arg("--no-simulate")
+                .output();
 
-                cmd.await.unwrap();
+            cmd.await.unwrap();
         }
 
         //tokio::time::sleep(tokio::time::Duration::from_secs(15)).await; //placeholder for actual download

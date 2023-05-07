@@ -17,25 +17,27 @@ async fn main() {
     dotenv().ok();
 
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-    .with_max_level(tracing::Level::INFO)
-    .event_format(tracing_subscriber::fmt::format::json())
-    .finish();
+        .with_max_level(tracing::Level::INFO)
+        .event_format(tracing_subscriber::fmt::format::json())
+        .finish();
 
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("setting default subscriber failed");
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
         std::env::var(env_var_names::DATABASE_URL).unwrap(),
     );
     let application_connection_pool = Pool::builder(config).build().unwrap();
 
-    for _ in 0..std::env::var(env_var_names::TRACKER_THREAD_COUNT).unwrap().parse::<i32>().unwrap() {
+    for _ in 0..std::env::var(env_var_names::TRACKER_THREAD_COUNT)
+        .unwrap()
+        .parse::<i32>()
+        .unwrap()
+    {
         let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
         let worker_connection_pool = application_connection_pool.clone();
         tokio::spawn(async move {
             let task_connection_pool = worker_connection_pool.clone();
             loop {
-
                 interval_timer.tick().await;
                 track(task_connection_pool.clone()).await;
             }

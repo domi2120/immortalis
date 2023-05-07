@@ -36,8 +36,10 @@ async fn get_schedules(app_state: web::Data<AppState>) -> impl Responder {
 
 #[get("tracked_collection")]
 async fn get_tracked_collection(app_state: web::Data<AppState>) -> impl Responder {
-
-    let results = tracked_collections::table.load::<TrackedCollection>(&mut app_state.db_connection_pool.get().await.unwrap()).await.unwrap();
+    let results = tracked_collections::table
+        .load::<TrackedCollection>(&mut app_state.db_connection_pool.get().await.unwrap())
+        .await
+        .unwrap();
     HttpResponse::Ok().json(results)
 }
 
@@ -125,12 +127,11 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
-    .with_max_level(tracing::Level::INFO)
-    .event_format(tracing_subscriber::fmt::format::json())
-    .finish();
+        .with_max_level(tracing::Level::INFO)
+        .event_format(tracing_subscriber::fmt::format::json())
+        .finish();
 
-    tracing::subscriber::set_global_default(subscriber)
-        .expect("setting default subscriber failed");
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
         std::env::var(env_var_names::DATABASE_URL).unwrap(),
