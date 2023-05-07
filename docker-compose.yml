@@ -21,6 +21,37 @@ services:
     ports:
       - "5050:80"
 
+  tracker:
+    image: immortalis-backend-tracker 
+    depends_on:
+      - db
+    build:
+      context: .
+      dockerfile: immortalis-backend-tracker/Dockerfile
+    env_file:
+      - ".env"
+
+  api:
+    image: immortalis-backend-api 
+    depends_on:
+      - db
+    build:
+      context: .
+      dockerfile: immortalis-backend-api/Dockerfile
+    ports:
+      - "8080:8080"
+    env_file:
+      - ".env"
+  
+  archiver:
+    image: immortalis-backend-archiver 
+    depends_on:
+      - db
+    build:
+      context: .
+      dockerfile: immortalis-backend-archiver/Dockerfile
+    env_file:
+      - ".env"
 
 volumes:
   db:
