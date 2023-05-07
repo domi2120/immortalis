@@ -90,32 +90,35 @@ async fn test(pool: Pool<AsyncPgConnection>) {
             .await
             .unwrap();
 
-        let cmd = Command::new("yt-dlp")
-            .arg(&result.url)
-            .arg("-o")
-            .arg(
-                std::env::var("FILE_STORAGE_LOCATION")
-                    .expect("FILE_STORAGE_LOCATION invalid or missing")
-                    + "%(title)s.%(ext)s",
-            )
-            .arg("--embed-thumbnail")
-            .arg("--embed-metadata")
-            .arg("--embed-chapters")
-            .arg("--embed-info-json")
-            .arg("--embed-subs")
-            .arg("--wait-for-video")
-            .arg("60")
-            .arg("--live-from-start")
-            .arg("--print")
-            .arg(
-                std::env::var("FILE_STORAGE_LOCATION")
-                    .expect("FILE_STORAGE_LOCATION invalid or missing")
-                    + "%(title)s",
-            )
-            .arg("--no-simulate")
-            .output();
+        // if SKIP_DOWNLOAD is set, we skip the download
+        if std::env::var("SKIP_DOWNLOAD").unwrap_or_default().is_empty() {
+            let cmd = Command::new("yt-dlp")
+                    .arg(&result.url)
+                    .arg("-o")
+                    .arg(
+                        std::env::var("FILE_STORAGE_LOCATION")
+                            .expect("FILE_STORAGE_LOCATION invalid or missing")
+                            + "%(title)s.%(ext)s",
+                    )
+                    .arg("--embed-thumbnail")
+                    .arg("--embed-metadata")
+                    .arg("--embed-chapters")
+                    .arg("--embed-info-json")
+                    .arg("--embed-subs")
+                    .arg("--wait-for-video")
+                    .arg("60")
+                    .arg("--live-from-start")
+                    .arg("--print")
+                    .arg(
+                        std::env::var("FILE_STORAGE_LOCATION")
+                            .expect("FILE_STORAGE_LOCATION invalid or missing")
+                            + "%(title)s",
+                    )
+                    .arg("--no-simulate")
+                    .output();
 
-        cmd.await.unwrap();
+                cmd.await.unwrap();
+        }
 
         //tokio::time::sleep(tokio::time::Duration::from_secs(15)).await; //placeholder for actual download
         // if duration is 0 (video), we're done. If it isnt (livestream), we need to reload the metadata and update the duration
