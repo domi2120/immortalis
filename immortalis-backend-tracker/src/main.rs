@@ -18,15 +18,24 @@ async fn main() {
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
         std::env::var(env_var_names::DATABASE_URL).unwrap(),
     );
-    let pool = Pool::builder(config).build().unwrap();
+    let application_connection_pool = Pool::builder(config).build().unwrap();
 
-    let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
+    for i in 0..2 {
+        let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
+        let worker_connection_pool = application_connection_pool.clone();
+        tokio::spawn(async move {
+            let task_connection_pool = worker_connection_pool.clone();
+            loop {
+
+                interval_timer.tick().await;
+                track(task_connection_pool.clone()).await;
+            }
+        });
+    }
+
+    let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(50));
     loop {
         interval_timer.tick().await;
-        let pool_instance = pool.clone();
-        tokio::spawn(async move {
-            track(pool_instance).await;
-        });
     }
 }
 
