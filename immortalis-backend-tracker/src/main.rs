@@ -6,6 +6,7 @@ use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use dotenvy::dotenv;
 use immortalis_backend_common::database_models::tracked_collection::TrackedCollection;
+use immortalis_backend_common::env_var_names;
 use immortalis_backend_common::schema::{scheduled_archivals, tracked_collections};
 
 use serde_json::Value;
@@ -15,7 +16,7 @@ use youtube_dl::{Playlist, YoutubeDlOutput};
 async fn main() {
     dotenv().ok();
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
-        std::env::var("DATABASE_URL").unwrap(),
+        std::env::var(env_var_names::DATABASE_URL).unwrap(),
     );
     let pool = Pool::builder(config).build().unwrap();
 
@@ -111,7 +112,7 @@ async fn track(pool: Pool<AsyncPgConnection>) {
         let video: youtube_dl::SingleVideo = serde_json::from_value(value).unwrap();
         YoutubeDlOutput::SingleVideo(Box::new(video))
     };
-    
+
     let tracked_collection = youtube_dl_output.into_playlist().unwrap();
 
     if let Some(videos) = tracked_collection.entries {

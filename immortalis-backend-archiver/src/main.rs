@@ -9,6 +9,7 @@ use dotenvy::dotenv;
 use immortalis_backend_common::database_models::scheduled_archival::ScheduledArchival;
 use immortalis_backend_common::database_models::video::InsertableVideo;
 use immortalis_backend_common::database_models::video_status::VideoStatus;
+use immortalis_backend_common::env_var_names;
 use immortalis_backend_common::schema::{scheduled_archivals, videos};
 use youtube_dl::YoutubeDl;
 
@@ -16,7 +17,7 @@ use youtube_dl::YoutubeDl;
 async fn main() {
     dotenv().ok();
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
-        std::env::var("DATABASE_URL").unwrap(),
+        std::env::var(env_var_names::DATABASE_URL).unwrap(),
     );
     let pool = Pool::builder(config).build().unwrap();
 
@@ -91,12 +92,12 @@ async fn test(pool: Pool<AsyncPgConnection>) {
             .unwrap();
 
         // if SKIP_DOWNLOAD is set, we skip the download
-        if std::env::var("SKIP_DOWNLOAD").unwrap_or_default().is_empty() {
+        if std::env::var(env_var_names::SKIP_DOWNLOAD).unwrap_or_default().is_empty() {
             let cmd = Command::new("yt-dlp")
                     .arg(&result.url)
                     .arg("-o")
                     .arg(
-                        std::env::var("FILE_STORAGE_LOCATION")
+                        std::env::var(env_var_names::FILE_STORAGE_LOCATION)
                             .expect("FILE_STORAGE_LOCATION invalid or missing")
                             + "%(title)s.%(ext)s",
                     )
@@ -110,7 +111,7 @@ async fn test(pool: Pool<AsyncPgConnection>) {
                     .arg("--live-from-start")
                     .arg("--print")
                     .arg(
-                        std::env::var("FILE_STORAGE_LOCATION")
+                        std::env::var(env_var_names::FILE_STORAGE_LOCATION)
                             .expect("FILE_STORAGE_LOCATION invalid or missing")
                             + "%(title)s",
                     )

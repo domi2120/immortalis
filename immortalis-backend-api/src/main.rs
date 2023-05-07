@@ -3,6 +3,7 @@ use immortalis_backend_common::data_transfer_models::video_with_downloads::Video
 use immortalis_backend_common::database_models::{
     download::Download, scheduled_archival::ScheduledArchival, video::Video,
 };
+use immortalis_backend_common::env_var_names;
 use immortalis_backend_common::schema::{scheduled_archivals, tracked_collections, videos};
 
 use diesel::{insert_into, ExpressionMethods, GroupedBy};
@@ -114,11 +115,11 @@ struct AppState {
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
-        std::env::var("DATABASE_URL").unwrap(),
+        std::env::var(env_var_names::DATABASE_URL).unwrap(),
     );
 
     let pool = Pool::builder(config).build().unwrap();
-    let mut file_storage_location = std::env::var("FILE_STORAGE_LOCATION")
+    let mut file_storage_location = std::env::var(env_var_names::FILE_STORAGE_LOCATION)
         .expect("FILE_STORAGE_LOCATION invalid or missing")
         .to_string();
     file_storage_location = file_storage_location[..file_storage_location.len()].to_string();

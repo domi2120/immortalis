@@ -1,0 +1,3 @@
+pub const DATABASE_URL: &str = "DATABASE_URL";
+pub const FILE_STORAGE_LOCATION: &str = "FILE_STORAGE_LOCATION";
+pub const SKIP_DOWNLOAD: &str = "SKIP_DOWNLOAD";
