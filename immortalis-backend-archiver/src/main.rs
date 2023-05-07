@@ -13,9 +13,20 @@ use immortalis_backend_common::env_var_names;
 use immortalis_backend_common::schema::{scheduled_archivals, videos};
 use youtube_dl::YoutubeDl;
 
+use tracing::{info, warn};
+
 #[tokio::main]
 async fn main() {
     dotenv().ok();
+
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+    .with_max_level(tracing::Level::INFO)
+    .event_format(tracing_subscriber::fmt::format::json())
+    .finish();
+
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("setting default subscriber failed");
+
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
         std::env::var(env_var_names::DATABASE_URL).unwrap(),
     );
@@ -52,6 +63,7 @@ async fn test(pool: Pool<AsyncPgConnection>) {
         .unwrap();
 
     if results.is_empty() {
+        info!("No ScheduledArchivals found");
         return;
     }
 
@@ -66,7 +78,8 @@ async fn test(pool: Pool<AsyncPgConnection>) {
             .execute(&mut db_connection)
             .await
             .unwrap();
-        println!("Dequeued entry: {} with url: {}", result.id, result.url);
+        info!(result.id = result.id, result.url = result.url, "Dequeued entry: {} with url: {}", result.id, result.url);
+
 
         let upload_date = yt_dl_video.upload_date.unwrap();
         let video_duration = match yt_dl_video.duration {
@@ -97,6 +110,7 @@ async fn test(pool: Pool<AsyncPgConnection>) {
 
         insert_into(videos::table)
             .values(video)
+            .on_conflict_do_nothing()
             .execute(&mut db_connection)
             .await
             .unwrap();
@@ -173,7 +187,7 @@ async fn test(pool: Pool<AsyncPgConnection>) {
             .execute(&mut db_connection)
             .await
             .unwrap();
-        println!(
+        warn!(
             "Received error {:#?}. Video {} will be retried in 10 minutes",
             yt_video_result, result.url
         );

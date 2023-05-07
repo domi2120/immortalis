@@ -16,3 +16,5 @@ chrono = { version= "0.4.24", features = ["serde"] }
 youtube_dl = { version ="0.8.0", features = ["tokio"]}
 serde = { version= "1.0.152", features = ["std", "derive"] }
 serde_json = "1"
+tracing = "0.1.37"
+tracing-subscriber = { version = "0.3.17", features = ["json"] }

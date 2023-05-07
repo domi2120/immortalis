@@ -15,6 +15,15 @@ use youtube_dl::{Playlist, YoutubeDlOutput};
 #[tokio::main]
 async fn main() {
     dotenv().ok();
+    
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+    .with_max_level(tracing::Level::INFO)
+    .event_format(tracing_subscriber::fmt::format::json())
+    .finish();
+
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("setting default subscriber failed");
+
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
         std::env::var(env_var_names::DATABASE_URL).unwrap(),
     );
