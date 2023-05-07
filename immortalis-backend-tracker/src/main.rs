@@ -15,7 +15,7 @@ use youtube_dl::{Playlist, YoutubeDlOutput};
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-    
+
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
     .with_max_level(tracing::Level::INFO)
     .event_format(tracing_subscriber::fmt::format::json())
@@ -29,7 +29,7 @@ async fn main() {
     );
     let application_connection_pool = Pool::builder(config).build().unwrap();
 
-    for i in 0..2 {
+    for _ in 0..std::env::var(env_var_names::TRACKER_THREAD_COUNT).unwrap().parse::<i32>().unwrap() {
         let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
         let worker_connection_pool = application_connection_pool.clone();
         tokio::spawn(async move {
