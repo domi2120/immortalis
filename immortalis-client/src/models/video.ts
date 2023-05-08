@@ -12,5 +12,6 @@ export interface Video {
     selectedDownload: Download;
     originalUrl: string;
     status: string;
+    fileId: string;
 }
 

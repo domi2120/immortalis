@@ -98,6 +98,7 @@ async fn test(pool: Pool<AsyncPgConnection>) {
                 None => 0,
             };
 
+            let file_id = uuid::Uuid::new_v4();
             let video = InsertableVideo {
                 title: yt_dl_video.title,
                 channel: yt_dl_video.channel.unwrap(),
@@ -117,6 +118,7 @@ async fn test(pool: Pool<AsyncPgConnection>) {
                 original_url: result.url.clone(),
                 status:
                     immortalis_backend_common::database_models::video_status::VideoStatus::BeingArchived,
+                file_id: file_id.clone()
             };
 
             insert_into(videos::table)
@@ -137,7 +139,7 @@ async fn test(pool: Pool<AsyncPgConnection>) {
                     .arg(
                         std::env::var(env_var_names::FILE_STORAGE_LOCATION)
                             .expect("FILE_STORAGE_LOCATION invalid or missing")
-                            + "%(title)s.%(ext)s",
+                            + file_id.to_string().as_str() + ".%(ext)s" //"%(title)s.%(ext)s",
                     )
                     .arg("--embed-thumbnail")
                     .arg("--embed-metadata")

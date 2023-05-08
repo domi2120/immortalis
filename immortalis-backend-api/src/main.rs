@@ -110,7 +110,7 @@ async fn search(query: web::Query<SearchQuery>, app_state: web::Data<AppState>) 
         .await
         .unwrap();
 
-    let videos_with_downloads = retrieved_downloads
+    let videos_with_downloads: Vec<VideoWithDownload> = retrieved_downloads
         .grouped_by(&results)
         .into_iter()
         .zip(results)

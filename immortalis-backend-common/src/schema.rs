@@ -48,6 +48,7 @@ diesel::table! {
         thumbnail_address -> Varchar,
         original_url -> Varchar,
         status -> VideoStatus,
+        file_id -> Uuid,
     }
 }
 

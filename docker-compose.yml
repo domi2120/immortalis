@@ -61,7 +61,7 @@ services:
     image: immortalis-client
     build:
       context: ./immortalis-client
-      dockerfile: immortalis-backend-client/Dockerfile
+      dockerfile: ./Dockerfile
     ports:
       - "3000:80"
     volumes:
