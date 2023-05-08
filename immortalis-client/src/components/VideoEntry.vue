@@ -44,7 +44,7 @@ function numberToDelimetedString(x: number, delimeter: string) {
 
 async function download(video: any) {
   // not currently in use
-  console.log(video.title + " " + video.selectedDownload.value);
+  //console.log(video.title + " " + video.selectedDownload.value);
 }
 
 </script>
