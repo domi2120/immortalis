@@ -148,7 +148,7 @@ async fn main() -> std::io::Result<()> {
         .to_string();
     file_storage_location = file_storage_location[..file_storage_location.len()].to_string();
 
-    HttpServer::new(move || {
+    let mut server = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(AppState {
                 db_connection_pool: pool.clone(),
@@ -163,8 +163,12 @@ async fn main() -> std::io::Result<()> {
             .service(get_tracked_collection)
             .service(tracked_collection)
     })
-    .bind(("0.0.0.0", 8080))?
-    .bind("[::1]:8080")? // can require special config in docker
-    .run()
+    .bind(("0.0.0.0", 8080))?;
+
+    if std::env::var(env_var_names::USE_IPV6).unwrap() == "1" {
+        server = server.bind("[::1]:8080")?; // can require special config in docker    
+    }
+
+    server.run()
     .await
 }
