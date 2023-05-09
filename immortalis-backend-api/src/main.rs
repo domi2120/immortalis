@@ -16,7 +16,7 @@ use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use serde::Deserialize;
 
 use dotenvy::dotenv;
-use tracing::info;
+use tracing::{info, debug};
 use uuid::Uuid;
 
 #[get("/health")]
@@ -163,7 +163,7 @@ async fn get_file(
         file_extension = video.file_extension.to_string();
     }
 
-    println!("{}{}{}", location, &file_name, &file_extension);
+    debug!("{}{}.{}", location, &file_name, &file_extension);
     let response =
         actix_files::NamedFile::open_async(location + &file_name + "." + &file_extension)
             .await
