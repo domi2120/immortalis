@@ -130,8 +130,21 @@ struct GetFileRequestData {
     file_id: Uuid
 }
 
-#[get("/file")]
-async fn get_file(req: HttpRequest, query: web::Query<GetFileRequestData>, app_state: web::Data<AppState>) -> impl Responder{
+#[get("/thumbnail")]
+async fn get_thumbnail(req: HttpRequest, query: web::Query<GetFileRequestData>, app_state: web::Data<AppState>) -> impl Responder{
+
+    let mut conn = app_state.db_connection_pool.get().await.unwrap();
+    let results: Video = videos::table.filter(videos::thumbnail_id.eq(query.file_id)).first::<Video>(&mut conn).await.unwrap();
+
+    let response = actix_files::NamedFile::open_async(app_state.file_storage_location.to_owned() + "/thumbnails/" + query.file_id.to_string().as_str() + "." + results.thumbnail_extension.as_str()).await.unwrap();
+    response.set_content_disposition(ContentDisposition {
+        disposition: actix_web::http::header::DispositionType::Attachment,
+        parameters: vec![DispositionParam::FilenameExt(ExtendedValue{value: (results.title + "." + results.thumbnail_extension.as_str()).as_bytes().to_vec(), charset: Charset::Ext("UTF-8".to_string()), language_tag: None})]
+    }).into_response(&req)
+}
+
+#[get("/video")]
+async fn get_video(req: HttpRequest, query: web::Query<GetFileRequestData>, app_state: web::Data<AppState>) -> impl Responder{
 
     let mut conn = app_state.db_connection_pool.get().await.unwrap();
     let results: Video = videos::table.filter(videos::file_id.eq(query.file_id)).first::<Video>(&mut conn).await.unwrap();
@@ -180,7 +193,8 @@ async fn main() -> std::io::Result<()> {
             .service(get_schedules)
             .service(get_tracked_collection)
             .service(tracked_collection)
-            .service(get_file)
+            .service(get_video)
+            .service(get_thumbnail)
     })
     .bind(("0.0.0.0", 8080))?;
 

@@ -50,6 +50,8 @@ diesel::table! {
         status -> VideoStatus,
         file_id -> Uuid,
         file_extension -> Varchar,
+        thumbnail_id -> Uuid,
+        thumbnail_extension -> Varchar,
     }
 }
 

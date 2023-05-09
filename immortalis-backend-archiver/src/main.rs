@@ -12,6 +12,7 @@ use immortalis_backend_common::database_models::video::InsertableVideo;
 use immortalis_backend_common::database_models::video_status::VideoStatus;
 use immortalis_backend_common::env_var_names;
 use immortalis_backend_common::schema::{scheduled_archivals, videos};
+use tokio::fs;
 use youtube_dl::YoutubeDl;
 
 use tracing::{info, warn};
@@ -98,6 +99,16 @@ async fn test(pool: Pool<AsyncPgConnection>) {
                 None => 0,
             };
 
+            let resp = reqwest::get(yt_dl_video.thumbnail.clone().unwrap()).await.unwrap().bytes().await.unwrap();
+
+            let thumbnail_address = yt_dl_video.thumbnail.unwrap();
+            let thumbnail_id = uuid::Uuid::new_v4();
+            let thumbnail_extension = thumbnail_address.split(".").last().unwrap();
+            fs::create_dir_all(std::env::var(env_var_names::FILE_STORAGE_LOCATION)
+            .expect("FILE_STORAGE_LOCATION invalid or missing").to_string()  + "thumbnails").await.unwrap();
+            fs::write(std::env::var(env_var_names::FILE_STORAGE_LOCATION)
+            .expect("FILE_STORAGE_LOCATION invalid or missing").to_string()  + "thumbnails/" + &thumbnail_id.to_string() + "." + thumbnail_extension, resp).await.unwrap();
+
             let file_id = uuid::Uuid::new_v4();
             let video = InsertableVideo {
                 title: yt_dl_video.title,
@@ -114,12 +125,14 @@ async fn test(pool: Pool<AsyncPgConnection>) {
                 ),
                 archived_date: chrono::Utc::now().naive_utc(),
                 duration: video_duration,
-                thumbnail_address: yt_dl_video.thumbnail.unwrap(),
+                thumbnail_address: thumbnail_address.clone(),
                 original_url: result.url.clone(),
                 status:
                     immortalis_backend_common::database_models::video_status::VideoStatus::BeingArchived,
                 file_id: file_id.clone(),
-                file_extension: "mkv".to_string()
+                file_extension: "mkv".to_string(),
+                thumbnail_id: thumbnail_id.clone(),
+                thumbnail_extension: thumbnail_extension.to_string()
             };
 
             insert_into(videos::table)

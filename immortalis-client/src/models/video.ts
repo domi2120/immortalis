@@ -13,5 +13,6 @@ export interface Video {
     originalUrl: string;
     status: string;
     fileId: string;
+    thumbnailId: string;
 }
 

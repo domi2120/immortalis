@@ -2,7 +2,7 @@
     <v-container class="fill-height" v-if="props.video.value.title" >
         <v-spacer></v-spacer>
         <v-col :cols="2" sm=2 class="pa-3">
-            <v-img :src="props.video.value.thumbnailAddress" class="d-flex align-end" >
+            <v-img :src="'/api/thumbnail?file_id=' + encodeURI(props.video.value.thumbnailId)" class="d-flex align-end" >
               <v-chip class="d-float float-right " variant="elevated">
                 {{ new Date(props.video.value.duration * 1000).toISOString().slice(11, 19) }}
               </v-chip>

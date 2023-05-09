@@ -20,6 +20,8 @@ pub struct Video {
     pub status: VideoStatus,
     pub file_id: uuid::Uuid,
     pub file_extension: String,
+    pub thumbnail_id: uuid::Uuid,
+    pub thumbnail_extension: String,
 }
 
 #[derive(Deserialize, Serialize, Selectable, std::fmt::Debug, Insertable)]
@@ -36,4 +38,6 @@ pub struct InsertableVideo {
     pub status: VideoStatus,
     pub file_id: uuid::Uuid,
     pub file_extension: String,
+    pub thumbnail_id: uuid::Uuid,
+    pub thumbnail_extension: String,
 }
