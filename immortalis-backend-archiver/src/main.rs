@@ -33,6 +33,10 @@ async fn main() {
     );
     let application_connection_pool = Pool::builder(config).build().unwrap();
 
+    let file_storage_location = std::env::var(env_var_names::FILE_STORAGE_LOCATION)
+    .expect("FILE_STORAGE_LOCATION invalid or missing");
+    let skip_download = true;
+
     // spawn 4 workers
     for _ in 0..std::env::var(env_var_names::TRACKER_THREAD_COUNT)
         .unwrap()
@@ -42,11 +46,12 @@ async fn main() {
         let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
 
         let worker_connection_pool = application_connection_pool.clone();
+        let worker_file_storage_location = file_storage_location.clone();
         tokio::spawn(async move {
             let task_connection_pool = worker_connection_pool.clone();
             loop {
                 interval_timer.tick().await;
-                test(task_connection_pool.clone()).await;
+                archive(task_connection_pool.clone(), &skip_download, &worker_file_storage_location).await;
             }
         });
     }
@@ -57,7 +62,7 @@ async fn main() {
     }
 }
 
-async fn test(pool: Pool<AsyncPgConnection>) {
+async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_storage_location: &str) {
     let db_connection = &mut pool.get().await.unwrap();
     let _g = db_connection.transaction::<_, diesel::result::Error ,_>(|db_connection| async move {
         let results = scheduled_archivals::table
@@ -104,10 +109,8 @@ async fn test(pool: Pool<AsyncPgConnection>) {
             let thumbnail_address = yt_dl_video.thumbnail.unwrap();
             let thumbnail_id = uuid::Uuid::new_v4();
             let thumbnail_extension = thumbnail_address.split(".").last().unwrap();
-            fs::create_dir_all(std::env::var(env_var_names::FILE_STORAGE_LOCATION)
-            .expect("FILE_STORAGE_LOCATION invalid or missing").to_string()  + "thumbnails").await.unwrap();
-            fs::write(std::env::var(env_var_names::FILE_STORAGE_LOCATION)
-            .expect("FILE_STORAGE_LOCATION invalid or missing").to_string()  + "thumbnails/" + &thumbnail_id.to_string() + "." + thumbnail_extension, resp).await.unwrap();
+            fs::create_dir_all(file_storage_location.to_string()  + "thumbnails").await.unwrap();
+            fs::write(file_storage_location.to_string() + "thumbnails/" + &thumbnail_id.to_string() + "." + thumbnail_extension, resp).await.unwrap();
 
             let file_id = uuid::Uuid::new_v4();
             let video = InsertableVideo {
@@ -143,18 +146,12 @@ async fn test(pool: Pool<AsyncPgConnection>) {
                 .unwrap();
 
             // if SKIP_DOWNLOAD is set, we skip the download
-            if std::env::var(env_var_names::SKIP_DOWNLOAD)
-                .unwrap_or_default()
-                .is_empty()
+            if *skip_download
             {
                 let cmd = Command::new("yt-dlp")
                     .arg(&result.url)
                     .arg("-o")
-                    .arg(
-                        std::env::var(env_var_names::FILE_STORAGE_LOCATION)
-                            .expect("FILE_STORAGE_LOCATION invalid or missing")
-                            + file_id.to_string().as_str() + ".%(ext)s" //"%(title)s.%(ext)s",
-                    )
+                    .arg(file_storage_location.to_string() + file_id.to_string().as_str() + ".%(ext)s")
                     .arg("--embed-thumbnail")
                     .arg("--embed-metadata")
                     .arg("--embed-chapters")
@@ -164,10 +161,7 @@ async fn test(pool: Pool<AsyncPgConnection>) {
                     .arg("60")
                     .arg("--live-from-start")
                     .arg("--print")
-                    .arg(
-                        std::env::var(env_var_names::FILE_STORAGE_LOCATION)
-                            .expect("FILE_STORAGE_LOCATION invalid or missing")
-                            + "%(title)s",
+                    .arg(file_storage_location.to_string() + "%(title)s",
                     )
                     .arg("--no-simulate")
                     .output();
