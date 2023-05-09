@@ -127,33 +127,41 @@ async fn search(query: web::Query<SearchQuery>, app_state: web::Data<AppState>) 
 
 #[derive(Deserialize)]
 struct GetFileRequestData {
-    file_id: Uuid
+    file_id: Uuid,
+    is_thumbnail: bool
 }
 
-#[get("/thumbnail")]
-async fn get_thumbnail(req: HttpRequest, query: web::Query<GetFileRequestData>, app_state: web::Data<AppState>) -> impl Responder{
+#[get("/file")]
+async fn get_file(req: HttpRequest, query: web::Query<GetFileRequestData>, app_state: web::Data<AppState>) -> impl Responder{
 
     let mut conn = app_state.db_connection_pool.get().await.unwrap();
-    let results: Video = videos::table.filter(videos::thumbnail_id.eq(query.file_id)).first::<Video>(&mut conn).await.unwrap();
+    let mut table = videos::table.into_boxed();
 
-    let response = actix_files::NamedFile::open_async(app_state.file_storage_location.to_owned() + "/thumbnails/" + query.file_id.to_string().as_str() + "." + results.thumbnail_extension.as_str()).await.unwrap();
+    let file_extension: String;
+    let file_name: String;
+    let mut location = app_state.file_storage_location.to_owned();
+    let video: Video;
+
+    if query.is_thumbnail {
+        table = table.filter(videos::thumbnail_id.eq(query.file_id));
+        video = table.first::<Video>(&mut conn).await.unwrap();
+        file_name = video.thumbnail_id.to_string();
+        file_extension = video.thumbnail_extension.to_string();
+        location += "thumbnails/";
+    } else {
+        table = table.filter(videos::file_id.eq(query.file_id));
+        video = table.first::<Video>(&mut conn).await.unwrap();
+        file_name = video.file_id.to_string();
+        file_extension = video.file_extension.to_string();
+    }
+
+    println!("{}{}{}",location, &file_name, &file_extension);
+    let response = actix_files::NamedFile::open_async(location + &file_name + "." + &file_extension).await.unwrap();
     response.set_content_disposition(ContentDisposition {
         disposition: actix_web::http::header::DispositionType::Attachment,
-        parameters: vec![DispositionParam::FilenameExt(ExtendedValue{value: (results.title + "." + results.thumbnail_extension.as_str()).as_bytes().to_vec(), charset: Charset::Ext("UTF-8".to_string()), language_tag: None})]
+        parameters: vec![DispositionParam::FilenameExt(ExtendedValue{value: (video.title + "." + &file_extension).as_bytes().to_vec(), charset: Charset::Ext("UTF-8".to_string()), language_tag: None})]
     }).into_response(&req)
-}
-
-#[get("/video")]
-async fn get_video(req: HttpRequest, query: web::Query<GetFileRequestData>, app_state: web::Data<AppState>) -> impl Responder{
-
-    let mut conn = app_state.db_connection_pool.get().await.unwrap();
-    let results: Video = videos::table.filter(videos::file_id.eq(query.file_id)).first::<Video>(&mut conn).await.unwrap();
-
-    let response = actix_files::NamedFile::open_async(app_state.file_storage_location.to_owned() + "/" + query.file_id.to_string().as_str() + "." + results.file_extension.as_str()).await.unwrap();
-    response.set_content_disposition(ContentDisposition {
-        disposition: actix_web::http::header::DispositionType::Attachment,
-        parameters: vec![DispositionParam::FilenameExt(ExtendedValue{value: (results.title + "." + results.file_extension.as_str()).as_bytes().to_vec(), charset: Charset::Ext("UTF-8".to_string()), language_tag: None})]
-    }).into_response(&req)
+    
 }
 
 struct AppState {
@@ -193,8 +201,7 @@ async fn main() -> std::io::Result<()> {
             .service(get_schedules)
             .service(get_tracked_collection)
             .service(tracked_collection)
-            .service(get_video)
-            .service(get_thumbnail)
+            .service(get_file)
     })
     .bind(("0.0.0.0", 8080))?;
 

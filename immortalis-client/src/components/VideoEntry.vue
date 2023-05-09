@@ -2,7 +2,7 @@
     <v-container class="fill-height" v-if="props.video.value.title" >
         <v-spacer></v-spacer>
         <v-col :cols="2" sm=2 class="pa-3">
-            <v-img :src="'/api/thumbnail?file_id=' + encodeURI(props.video.value.thumbnailId)" class="d-flex align-end" >
+            <v-img :src="'/api/file?is_thumbnail=true&file_id=' + encodeURI(props.video.value.thumbnailId)" class="d-flex align-end" >
               <v-chip class="d-float float-right " variant="elevated">
                 {{ new Date(props.video.value.duration * 1000).toISOString().slice(11, 19) }}
               </v-chip>
@@ -16,7 +16,7 @@
             <!-- 
             <v-select :disabled="props.video.value.downloads.length < 1" label="Download" :items="props.video.value.downloads" v-model="props.video.value.selectedDownload" class="w-40" return-object/>
             -->
-            <v-btn :href="'/api/file?file_id=' + encodeURI(props.video.value.fileId )" :disabled="props.video.value.status != 'Archived'" @click="download(video)" >Download</v-btn>
+            <v-btn :href="'/api/file?is_thumbnail=false&file_id=' + encodeURI(props.video.value.fileId )" :disabled="props.video.value.status != 'Archived'" @click="download(video)" >Download</v-btn>
             <v-btn :href="props.video.value.originalUrl" class="ma-2">Watch Original</v-btn>
             <v-chip>{{ props.video.value.status }}</v-chip>
           </v-col>
