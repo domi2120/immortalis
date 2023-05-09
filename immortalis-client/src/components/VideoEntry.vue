@@ -16,7 +16,7 @@
             <!-- 
             <v-select :disabled="props.video.value.downloads.length < 1" label="Download" :items="props.video.value.downloads" v-model="props.video.value.selectedDownload" class="w-40" return-object/>
             -->
-            <v-btn :href="'/api/download/' + encodeURI(props.video.value.fileId) + '.mkv'" :disabled="props.video.value.status != 'Archived'" @click="download(video)" >Download</v-btn>
+            <v-btn :href="'/api/file?file_id=' + encodeURI(props.video.value.fileId )" :disabled="props.video.value.status != 'Archived'" @click="download(video)" >Download</v-btn>
             <v-btn :href="props.video.value.originalUrl" class="ma-2">Watch Original</v-btn>
             <v-chip>{{ props.video.value.status }}</v-chip>
           </v-col>
