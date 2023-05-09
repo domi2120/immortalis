@@ -136,10 +136,10 @@ async fn get_file(req: HttpRequest, query: web::Query<GetFileRequestData>, app_s
     let mut conn = app_state.db_connection_pool.get().await.unwrap();
     let results: Video = videos::table.filter(videos::file_id.eq(query.file_id)).first::<Video>(&mut conn).await.unwrap();
 
-    let response = actix_files::NamedFile::open_async(app_state.file_storage_location.to_owned() + "/" + query.file_id.to_string().as_str() + ".mkv").await.unwrap();
+    let response = actix_files::NamedFile::open_async(app_state.file_storage_location.to_owned() + "/" + query.file_id.to_string().as_str() + "." + results.file_extension.as_str()).await.unwrap();
     response.set_content_disposition(ContentDisposition {
         disposition: actix_web::http::header::DispositionType::Attachment,
-        parameters: vec![DispositionParam::FilenameExt(ExtendedValue{value: (results.title + ".mkv").as_bytes().to_vec(), charset: Charset::Ext("UTF-8".to_string()), language_tag: None})]
+        parameters: vec![DispositionParam::FilenameExt(ExtendedValue{value: (results.title + "." + results.file_extension.as_str()).as_bytes().to_vec(), charset: Charset::Ext("UTF-8".to_string()), language_tag: None})]
     }).into_response(&req)
 }
 

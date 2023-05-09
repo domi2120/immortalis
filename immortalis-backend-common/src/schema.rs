@@ -49,6 +49,7 @@ diesel::table! {
         original_url -> Varchar,
         status -> VideoStatus,
         file_id -> Uuid,
+        file_extension -> Varchar,
     }
 }
 

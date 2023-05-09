@@ -118,7 +118,8 @@ async fn test(pool: Pool<AsyncPgConnection>) {
                 original_url: result.url.clone(),
                 status:
                     immortalis_backend_common::database_models::video_status::VideoStatus::BeingArchived,
-                file_id: file_id.clone()
+                file_id: file_id.clone(),
+                file_extension: "mkv".to_string()
             };
 
             insert_into(videos::table)
