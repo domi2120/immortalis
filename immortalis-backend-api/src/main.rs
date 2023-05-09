@@ -1,5 +1,5 @@
-use actix_web::http::header::{ExtendedValue, ContentDisposition, DispositionParam, Charset};
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder, HttpRequest};
+use actix_web::http::header::{Charset, ContentDisposition, DispositionParam, ExtendedValue};
+use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use immortalis_backend_common::data_transfer_models::video_with_downloads::VideoWithDownload;
 use immortalis_backend_common::database_models::tracked_collection::TrackedCollection;
 use immortalis_backend_common::database_models::{
@@ -46,8 +46,10 @@ async fn get_tracked_collection(app_state: web::Data<AppState>) -> impl Responde
 }
 
 #[post("tracked_collection")]
-async fn tracked_collection(schedule_request: web::Json<ScheduleRequest>, app_state: web::Data<AppState>) -> impl Responder {
-
+async fn tracked_collection(
+    schedule_request: web::Json<ScheduleRequest>,
+    app_state: web::Data<AppState>,
+) -> impl Responder {
     insert_into(tracked_collections::table)
         .values(tracked_collections::url.eq(&schedule_request.url))
         .execute(&mut app_state.db_connection_pool.get().await.unwrap())
@@ -79,7 +81,10 @@ async fn schedule(
     let url = url::Url::parse(&schedule_request.url).unwrap();
     let view_query_param = url.query_pairs().filter(|x| x.0 == "v");
     let mut new_url = url.clone();
-    new_url.query_pairs_mut().clear().extend_pairs(view_query_param);
+    new_url
+        .query_pairs_mut()
+        .clear()
+        .extend_pairs(view_query_param);
     let video_url = new_url.to_string();
 
     let inserted = insert_into(scheduled_archivals::table)
@@ -128,12 +133,15 @@ async fn search(query: web::Query<SearchQuery>, app_state: web::Data<AppState>) 
 #[derive(Deserialize)]
 struct GetFileRequestData {
     file_id: Uuid,
-    is_thumbnail: bool
+    is_thumbnail: bool,
 }
 
 #[get("/file")]
-async fn get_file(req: HttpRequest, query: web::Query<GetFileRequestData>, app_state: web::Data<AppState>) -> impl Responder{
-
+async fn get_file(
+    req: HttpRequest,
+    query: web::Query<GetFileRequestData>,
+    app_state: web::Data<AppState>,
+) -> impl Responder {
     let mut conn = app_state.db_connection_pool.get().await.unwrap();
     let mut table = videos::table.into_boxed();
 
@@ -155,18 +163,26 @@ async fn get_file(req: HttpRequest, query: web::Query<GetFileRequestData>, app_s
         file_extension = video.file_extension.to_string();
     }
 
-    println!("{}{}{}",location, &file_name, &file_extension);
-    let response = actix_files::NamedFile::open_async(location + &file_name + "." + &file_extension).await.unwrap();
-    response.set_content_disposition(ContentDisposition {
-        disposition: actix_web::http::header::DispositionType::Attachment,
-        parameters: vec![DispositionParam::FilenameExt(ExtendedValue{value: (video.title + "." + &file_extension).as_bytes().to_vec(), charset: Charset::Ext("UTF-8".to_string()), language_tag: None})]
-    }).into_response(&req)
-    
+    println!("{}{}{}", location, &file_name, &file_extension);
+    let response =
+        actix_files::NamedFile::open_async(location + &file_name + "." + &file_extension)
+            .await
+            .unwrap();
+    response
+        .set_content_disposition(ContentDisposition {
+            disposition: actix_web::http::header::DispositionType::Attachment,
+            parameters: vec![DispositionParam::FilenameExt(ExtendedValue {
+                value: (video.title + "." + &file_extension).as_bytes().to_vec(),
+                charset: Charset::Ext("UTF-8".to_string()),
+                language_tag: None,
+            })],
+        })
+        .into_response(&req)
 }
 
 struct AppState {
     db_connection_pool: Pool<AsyncPgConnection>,
-    file_storage_location: String
+    file_storage_location: String,
 }
 
 #[actix_web::main]
@@ -186,14 +202,13 @@ async fn main() -> std::io::Result<()> {
 
     let pool = Pool::builder(config).build().unwrap();
     let file_storage_location = std::env::var(env_var_names::FILE_STORAGE_LOCATION)
-        .expect("FILE_STORAGE_LOCATION invalid or missing")
-        .to_string();
+        .expect("FILE_STORAGE_LOCATION invalid or missing");
 
     let mut server = HttpServer::new(move || {
         App::new()
             .app_data(web::Data::new(AppState {
                 db_connection_pool: pool.clone(),
-                file_storage_location: file_storage_location.clone()
+                file_storage_location: file_storage_location.clone(),
             }))
             .service(health)
             .service(search)
@@ -206,9 +221,8 @@ async fn main() -> std::io::Result<()> {
     .bind(("0.0.0.0", 8080))?;
 
     if std::env::var(env_var_names::USE_IPV6).unwrap() == "1" {
-        server = server.bind("[::1]:8080")?; // can require special config in docker    
+        server = server.bind("[::1]:8080")?; // can require special config in docker
     }
 
-    server.run()
-    .await
+    server.run().await
 }

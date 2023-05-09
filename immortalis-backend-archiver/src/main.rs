@@ -5,7 +5,7 @@ use diesel::{delete, insert_into, update, ExpressionMethods};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::scoped_futures::ScopedFutureExt;
-use diesel_async::{AsyncPgConnection, RunQueryDsl, AsyncConnection};
+use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use dotenvy::dotenv;
 use immortalis_backend_common::database_models::scheduled_archival::ScheduledArchival;
 use immortalis_backend_common::database_models::video::InsertableVideo;
@@ -34,7 +34,7 @@ async fn main() {
     let application_connection_pool = Pool::builder(config).build().unwrap();
 
     let file_storage_location = std::env::var(env_var_names::FILE_STORAGE_LOCATION)
-    .expect("FILE_STORAGE_LOCATION invalid or missing");
+        .expect("FILE_STORAGE_LOCATION invalid or missing");
     let skip_download = true;
 
     // spawn 4 workers
@@ -51,7 +51,12 @@ async fn main() {
             let task_connection_pool = worker_connection_pool.clone();
             loop {
                 interval_timer.tick().await;
-                archive(task_connection_pool.clone(), &skip_download, &worker_file_storage_location).await;
+                archive(
+                    task_connection_pool.clone(),
+                    &skip_download,
+                    &worker_file_storage_location,
+                )
+                .await;
             }
         });
     }
@@ -108,7 +113,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
 
             let thumbnail_address = yt_dl_video.thumbnail.unwrap();
             let thumbnail_id = uuid::Uuid::new_v4();
-            let thumbnail_extension = thumbnail_address.split(".").last().unwrap();
+            let thumbnail_extension = thumbnail_address.split('.').last().unwrap();
             fs::create_dir_all(file_storage_location.to_string()  + "thumbnails").await.unwrap();
             fs::write(file_storage_location.to_string() + "thumbnails/" + &thumbnail_id.to_string() + "." + thumbnail_extension, resp).await.unwrap();
 
@@ -132,9 +137,9 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
                 original_url: result.url.clone(),
                 status:
                     immortalis_backend_common::database_models::video_status::VideoStatus::BeingArchived,
-                file_id: file_id.clone(),
+                file_id,
                 file_extension: "mkv".to_string(),
-                thumbnail_id: thumbnail_id.clone(),
+                thumbnail_id,
                 thumbnail_extension: thumbnail_extension.to_string()
             };
 
