@@ -35,7 +35,7 @@ async fn main() {
 
     let file_storage_location = std::env::var(env_var_names::FILE_STORAGE_LOCATION)
         .expect("FILE_STORAGE_LOCATION invalid or missing");
-    let skip_download = true;
+    let skip_download = std::env::var(env_var_names::SKIP_DOWNLOAD).unwrap_or_default().len() > 0;
 
     // spawn 4 workers
     for _ in 0..std::env::var(env_var_names::TRACKER_THREAD_COUNT)
@@ -151,7 +151,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
                 .unwrap();
 
             // if SKIP_DOWNLOAD is set, we skip the download
-            if *skip_download
+            if !*skip_download
             {
                 let cmd = Command::new("yt-dlp")
                     .arg(&result.url)
@@ -176,7 +176,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
 
             //tokio::time::sleep(tokio::time::Duration::from_secs(15)).await; //placeholder for actual download
             // if duration is 0 (video), we're done. If it isnt (livestream), we need to reload the metadata and update the duration
-            if video_duration != 0 {
+            if video_duration != 0 || *skip_download {
                 update(videos::table)
                     .set(videos::status.eq(VideoStatus::Archived))
                     .execute(db_connection)
