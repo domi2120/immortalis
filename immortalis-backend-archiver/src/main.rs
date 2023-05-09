@@ -38,7 +38,7 @@ async fn main() {
     let skip_download = std::env::var(env_var_names::SKIP_DOWNLOAD).unwrap_or_default().len() > 0;
 
     // spawn 4 workers
-    for _ in 0..std::env::var(env_var_names::TRACKER_THREAD_COUNT)
+    for _ in 0..std::env::var(env_var_names::ARCHIVER_THREAD_COUNT)
         .unwrap()
         .parse::<i32>()
         .unwrap()
