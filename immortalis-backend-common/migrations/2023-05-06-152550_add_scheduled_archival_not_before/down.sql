@@ -1,2 +1,0 @@
-alter table scheduled_archivals
-drop column not_before
