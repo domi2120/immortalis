@@ -19,6 +19,7 @@
   
 <script lang="ts" setup>
   import { onMounted } from 'vue';
+import { onUnmounted } from 'vue';
   import { Ref, ref } from 'vue';
   import { watch } from 'vue';
 
@@ -45,13 +46,17 @@
     ]
   );
 
-  
+  let interval: any;
   const schedules = ref([]);
   onMounted(async () => {
     schedules.value = await (await fetch("/api/tracked_collection")).json();
-    setInterval(async () => {
+    interval = setInterval(async () => {
       schedules.value = await (await fetch("/api/tracked_collection")).json();
     }, 2 * 1000);
+  })
+
+  onUnmounted(async () => {
+    clearInterval(interval);
   })
   
   async function track() {
