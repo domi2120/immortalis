@@ -7,7 +7,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug",
+            "name": "Debug archiver",
             "program": "immortalis-backend-archiver/target/debug/immortalis-backend-archiver",
             "args": [],
             "cwd": "${workspaceFolder}"
@@ -15,7 +15,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug",
+            "name": "Debug tracker",
             "program": "immortalis-backend-tracker/target/debug/immortalis-backend-tracker",
             "args": [],
             "cwd": "${workspaceFolder}"
@@ -23,7 +23,7 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug",
+            "name": "Debug api",
             "program": "immortalis-backend-api/target/debug/immortalis-backend-api",
             "args": [],
             "cwd": "${workspaceFolder}"
