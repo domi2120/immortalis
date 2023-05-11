@@ -1,7 +1,12 @@
+use std::collections::hash_map::HashMap;
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
+use actix::prelude::*;
+use actix::{Actor, Addr, Handler, StreamHandler};
 use actix_web::http::header::{Charset, ContentDisposition, DispositionParam, ExtendedValue};
 use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
+use actix_web_actors::ws::{self};
 use immortalis_backend_common::data_transfer_models::video_with_downloads::VideoWithDownload;
 use immortalis_backend_common::database_models::tracked_collection::TrackedCollection;
 use immortalis_backend_common::database_models::{
@@ -18,7 +23,7 @@ use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use serde::Deserialize;
 
 use dotenvy::dotenv;
-use tracing::{info, debug};
+use tracing::{debug, info};
 use uuid::Uuid;
 
 #[get("/health")]
@@ -185,37 +190,62 @@ async fn get_file(
 struct AppState {
     db_connection_pool: Pool<AsyncPgConnection>,
     file_storage_location: String,
+    web_socket_connections: Arc<RwLock<HashMap<String, Addr<ScheduledArchivalsEventHandler>>>>,
+}
+
+async fn distribute_postgres_events(app_state: web::Data<AppState>) {
+    let pool = sqlx::PgPool::connect(std::env::var(env_var_names::DATABASE_URL).unwrap().as_str())
+    .await
+    .unwrap();
+
+    let mut listener = sqlx::postgres::PgListener::connect_with(&pool)
+    .await
+    .unwrap();
+
+    listener
+    .listen_all(vec![
+            "scheduled_archivals_insert",
+            "scheduled_archivals_insert",
+        ])
+        .await
+        .unwrap();
+
+    let mut interval = actix_web::rt::time::interval(Duration::from_secs(5));
+    loop {
+        interval.tick().await;
+
+        while let Ok(Some(notification)) = listener.try_recv().await {
+            let channel = notification.channel();
+            let mut action: &str = "";
+            if channel == "scheduled_archivals_insert" {
+                action = "inserted";
+                info!(
+                    "scheduled_archivals {} was inserted",
+                    notification.payload()
+                );
+            } else if channel == "scheduled_archivals_delete" {
+                action = "deleted";
+                info!("scheduled_archivals {} was deleted", notification.payload());
+            }
+
+            for con in app_state.clone().web_socket_connections.read().unwrap().iter() {
+                con.1
+                    .send(Message(format!(
+                        "{{ \"searchId\": {}, \"action\": \"{}\" }}",
+                        notification.payload(),
+                        action
+                    )))
+                    .await
+                    .unwrap();
+            }
+        }
+    }
 }
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
-/*
-    let pool = sqlx::PgPool::connect(
-        std::env::var(env_var_names::DATABASE_URL).unwrap().as_str(),
-    ).await.unwrap();
 
-    let mut listener = sqlx::postgres::PgListener::connect_with(&pool).await.unwrap();
-
-    listener.listen_all(vec!["scheduled_archivals_insert", "scheduled_archivals_insert"]).await.unwrap();
-
-    actix_web::rt::spawn(async move {
-        let mut interval = actix_web::rt::time::interval(Duration::from_secs(1));
-        loop {
-            interval.tick().await;
-
-            while let Ok(Some(notification)) = listener.try_recv().await {
-                let channel = notification.channel();
-                if channel == "scheduled_archivals_insert" {
-                    info!("scheduled_archivals {} was inserted", notification.payload());
-                } else if channel == "scheduled_archivals_delete" {
-                    info!("scheduled_archivals {} was deleted", notification.payload());
-                }
-            }
-        }
-    });
-    
-*/
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(tracing::Level::INFO)
         .event_format(tracing_subscriber::fmt::format::json())
@@ -231,12 +261,22 @@ async fn main() -> std::io::Result<()> {
     let file_storage_location = std::env::var(env_var_names::FILE_STORAGE_LOCATION)
         .expect("FILE_STORAGE_LOCATION invalid or missing");
 
+    let app_state = web::Data::new(AppState {
+        db_connection_pool: pool.clone(),
+        file_storage_location: file_storage_location.clone(),
+        web_socket_connections: Arc::new(RwLock::new(HashMap::new())),
+    });
+
+    let cloned_app_state = app_state.clone();
+
+    actix_web::rt::spawn(async move {
+        distribute_postgres_events(cloned_app_state)
+    });
+
     let mut server = HttpServer::new(move || {
         App::new()
-            .app_data(web::Data::new(AppState {
-                db_connection_pool: pool.clone(),
-                file_storage_location: file_storage_location.clone(),
-            }))
+            .app_data(app_state.clone())
+            .route("/ws/", web::get().to(websocket))
             .service(health)
             .service(search)
             .service(schedule)
@@ -252,4 +292,61 @@ async fn main() -> std::io::Result<()> {
     }
 
     server.run().await
+}
+
+/// Chat server sends this messages to session
+#[derive(Message)]
+#[rtype(result = "()")]
+pub struct Message(pub String);
+
+#[derive(Clone)]
+pub struct ScheduledArchivalsEventHandler {
+    web_socket_connections: Arc<RwLock<HashMap<String, Addr<ScheduledArchivalsEventHandler>>>>,
+}
+
+impl Actor for ScheduledArchivalsEventHandler {
+    type Context = actix_web_actors::ws::WebsocketContext<Self>;
+
+    fn started(&mut self, ctx: &mut Self::Context) {
+        self.web_socket_connections
+            .write()
+            .unwrap()
+            .insert("test".to_owned(), ctx.address());
+    }
+}
+
+impl Handler<Message> for ScheduledArchivalsEventHandler {
+    type Result = ();
+
+    fn handle(&mut self, msg: Message, ctx: &mut Self::Context) -> Self::Result {
+        ctx.text(msg.0);
+    }
+}
+
+/// Handler for ws::Message message
+impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ScheduledArchivalsEventHandler {
+    fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
+        match msg {
+            Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
+            Ok(ws::Message::Text(text)) => ctx.text(text),
+            Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
+            _ => (),
+        }
+    }
+}
+
+async fn websocket(
+    req: HttpRequest,
+    stream: web::Payload,
+    app_state: web::Data<AppState>,
+) -> Result<HttpResponse, actix_web::error::Error> {
+    let resp = ws::start(
+        ScheduledArchivalsEventHandler {
+            web_socket_connections: app_state.web_socket_connections.clone(),
+        },
+        &req,
+        stream,
+    );
+    print!("baum");
+    resp
 }
