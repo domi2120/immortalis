@@ -46,18 +46,19 @@
   );
 
   let webSocket: WebSocket;
-
   const schedules: Ref<ScheduledArchival[]> = ref([]);
   onMounted(async () => {
     webSocket = new WebSocket(`ws://${window.location.host}/api/ws/`)
     webSocket.onmessage = async (x) => {
-      let data: { searchId: number, action: "deleted" | "inserted" } = JSON.parse(x.data);
+      let data: { record: ScheduledArchival, action: "delete" | "insert" } = JSON.parse(x.data);
+
       switch (data.action) {
-        case "inserted":
-          schedules.value = await (await fetch("/api/schedule")).json();
+        case "insert":
+          //schedules.value = await (await fetch("/api/schedule")).json();
+          schedules.value.push(data.record);
           break;
-        case "deleted":
-          schedules.value.splice(schedules.value.findIndex(s => s.id == data.searchId))
+        case "delete":
+          schedules.value.splice(schedules.value.findIndex(s => s.id == data.record.id))
           break;
       }
     }

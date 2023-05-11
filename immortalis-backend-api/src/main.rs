@@ -20,7 +20,7 @@ use diesel::{BelongingToDsl, PgTextExpressionMethods, QueryDsl};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use dotenvy::dotenv;
 use tracing::{debug, info};
@@ -198,13 +198,14 @@ async fn distribute_postgres_events(app_state: web::Data<AppState>) {
     .await
     .unwrap();
 
+    info!("doing stuff");
     let mut listener = sqlx::postgres::PgListener::connect_with(&pool)
     .await
     .unwrap();
 
     listener
     .listen_all(vec![
-            "scheduled_archivals_insert",
+            "scheduled_archivals",
             "scheduled_archivals_insert",
         ])
         .await
@@ -215,31 +216,22 @@ async fn distribute_postgres_events(app_state: web::Data<AppState>) {
         interval.tick().await;
 
         while let Ok(Some(notification)) = listener.try_recv().await {
-            let channel = notification.channel();
-            let mut action: &str = "";
-            if channel == "scheduled_archivals_insert" {
-                action = "inserted";
-                info!(
-                    "scheduled_archivals {} was inserted",
-                    notification.payload()
-                );
-            } else if channel == "scheduled_archivals_delete" {
-                action = "deleted";
-                info!("scheduled_archivals {} was deleted", notification.payload());
-            }
+            let postgres_event = serde_json::from_str::<PostgresEvent<ScheduledArchival>>(notification.payload()).unwrap();
 
             for con in app_state.clone().web_socket_connections.read().unwrap().iter() {
                 con.1
-                    .send(Message(format!(
-                        "{{ \"searchId\": {}, \"action\": \"{}\" }}",
-                        notification.payload(),
-                        action
-                    )))
+                    .send(Message(serde_json::to_string_pretty(&postgres_event).unwrap()))
                     .await
                     .unwrap();
             }
         }
     }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct PostgresEvent<T> {
+    action: String,
+    record: T
 }
 
 #[actix_web::main]
@@ -270,7 +262,7 @@ async fn main() -> std::io::Result<()> {
     let cloned_app_state = app_state.clone();
 
     actix_web::rt::spawn(async move {
-        distribute_postgres_events(cloned_app_state)
+        distribute_postgres_events(cloned_app_state).await;
     });
 
     let mut server = HttpServer::new(move || {
