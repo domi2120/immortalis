@@ -45,3 +45,21 @@ CREATE TABLE tracked_collections (
     tracking_started_at timestamp without time zone NOT NULL DEFAULT now(),
     last_checked timestamp without time zone
 );
+
+
+CREATE OR REPLACE FUNCTION notify_delete_insert()
+RETURNS trigger AS
+$$
+BEGIN
+	if tg_op = 'INSERT' then
+    	EXECUTE FORMAT('NOTIFY %s_insert , ''%s''', TG_TABLE_NAME, NEW.id);
+	elsif tg_op = 'DELETE' then
+    	EXECUTE FORMAT('NOTIFY %s_insert, ''%s''', TG_TABLE_NAME, OLD.id);
+	end if;
+  RETURN NEW;
+END;
+$$ LANGUAGE 'plpgsql';
+
+CREATE OR REPLACE TRIGGER scheduled_archivals_after_delete_insert_trigger AFTER DELETE OR INSERT
+       ON scheduled_archivals
+       FOR EACH ROW EXECUTE PROCEDURE notify_delete_insert();

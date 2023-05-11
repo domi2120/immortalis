@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use actix_web::http::header::{Charset, ContentDisposition, DispositionParam, ExtendedValue};
 use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use immortalis_backend_common::data_transfer_models::video_with_downloads::VideoWithDownload;
@@ -188,7 +190,32 @@ struct AppState {
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
+/*
+    let pool = sqlx::PgPool::connect(
+        std::env::var(env_var_names::DATABASE_URL).unwrap().as_str(),
+    ).await.unwrap();
 
+    let mut listener = sqlx::postgres::PgListener::connect_with(&pool).await.unwrap();
+
+    listener.listen_all(vec!["scheduled_archivals_insert", "scheduled_archivals_insert"]).await.unwrap();
+
+    actix_web::rt::spawn(async move {
+        let mut interval = actix_web::rt::time::interval(Duration::from_secs(1));
+        loop {
+            interval.tick().await;
+
+            while let Ok(Some(notification)) = listener.try_recv().await {
+                let channel = notification.channel();
+                if channel == "scheduled_archivals_insert" {
+                    info!("scheduled_archivals {} was inserted", notification.payload());
+                } else if channel == "scheduled_archivals_delete" {
+                    info!("scheduled_archivals {} was deleted", notification.payload());
+                }
+            }
+        }
+    });
+    
+*/
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(tracing::Level::INFO)
         .event_format(tracing_subscriber::fmt::format::json())
