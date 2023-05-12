@@ -1,9 +1,9 @@
 use actix::prelude::*;
 use actix::{Actor, Addr, Handler, StreamHandler};
-use uuid::Uuid;
+use actix_web_actors::ws::{self};
 use std::collections::hash_map::HashMap;
 use std::sync::{Arc, RwLock};
-use actix_web_actors::ws::{self};
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct ScheduledArchivalsEventHandler {

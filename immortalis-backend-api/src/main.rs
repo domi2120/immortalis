@@ -12,7 +12,7 @@ use immortalis_backend_common::database_models::{
     download::Download, scheduled_archival::ScheduledArchival, video::Video,
 };
 use immortalis_backend_common::env_var_names;
-use immortalis_backend_common::schema::{scheduled_archivals, tracked_collections, videos, files};
+use immortalis_backend_common::schema::{files, scheduled_archivals, tracked_collections, videos};
 
 use diesel::{insert_into, ExpressionMethods, GroupedBy};
 use diesel::{BelongingToDsl, PgTextExpressionMethods, QueryDsl};
@@ -26,10 +26,10 @@ use dotenvy::dotenv;
 use tracing::info;
 
 use crate::scheduled_archivals_event_handler::Message;
-pub mod scheduled_archivals_event_handler;
 pub mod request_models;
+pub mod scheduled_archivals_event_handler;
 pub mod utilities;
-use request_models::{ScheduleRequest, SearchQuery, GetFileRequestData};
+use request_models::{GetFileRequestData, ScheduleRequest, SearchQuery};
 
 #[get("/health")]
 async fn health() -> impl Responder {
@@ -132,20 +132,27 @@ async fn get_file(
 ) -> impl Responder {
     let mut conn = app_state.db_connection_pool.get().await.unwrap();
 
-    let f: immortalis_backend_common::database_models::file::File = files::table.find(query.file_id)
+    let f: immortalis_backend_common::database_models::file::File = files::table
+        .find(query.file_id)
         .first(&mut conn)
         .await
         .unwrap();
 
-    let response =
-    actix_files::NamedFile::open_async(format!("{}{}.{}",app_state.file_storage_location.to_owned(), &f.id.to_string(),&f.file_extension))
-        .await
-        .unwrap();
+    let response = actix_files::NamedFile::open_async(format!(
+        "{}{}.{}",
+        app_state.file_storage_location.to_owned(),
+        &f.id.to_string(),
+        &f.file_extension
+    ))
+    .await
+    .unwrap();
     response
         .set_content_disposition(ContentDisposition {
             disposition: actix_web::http::header::DispositionType::Attachment,
             parameters: vec![DispositionParam::FilenameExt(ExtendedValue {
-                value: format!("{}.{}",f.file_name, &f.file_extension).as_bytes().to_vec(),
+                value: format!("{}.{}", f.file_name, &f.file_extension)
+                    .as_bytes()
+                    .to_vec(),
                 charset: Charset::Ext("UTF-8".to_string()),
                 language_tag: None,
             })],
@@ -161,17 +168,15 @@ struct AppState {
 
 async fn distribute_postgres_events(app_state: web::Data<AppState>) {
     let pool = sqlx::PgPool::connect(std::env::var(env_var_names::DATABASE_URL).unwrap().as_str())
-    .await
-    .unwrap();
+        .await
+        .unwrap();
 
     let mut listener = sqlx::postgres::PgListener::connect_with(&pool)
-    .await
-    .unwrap();
+        .await
+        .unwrap();
 
     listener
-    .listen_all(vec![
-            "scheduled_archivals"
-        ])
+        .listen_all(vec!["scheduled_archivals"])
         .await
         .unwrap();
 
@@ -180,11 +185,21 @@ async fn distribute_postgres_events(app_state: web::Data<AppState>) {
         interval.tick().await;
 
         while let Ok(Some(notification)) = listener.try_recv().await {
-            let postgres_event = serde_json::from_str::<PostgresEvent<ScheduledArchival>>(notification.payload()).unwrap();
+            let postgres_event =
+                serde_json::from_str::<PostgresEvent<ScheduledArchival>>(notification.payload())
+                    .unwrap();
 
-            for con in app_state.clone().web_socket_connections.read().unwrap().iter() {
+            for con in app_state
+                .clone()
+                .web_socket_connections
+                .read()
+                .unwrap()
+                .iter()
+            {
                 con.1
-                    .send(Message(serde_json::to_string_pretty(&postgres_event).unwrap()))
+                    .send(Message(
+                        serde_json::to_string_pretty(&postgres_event).unwrap(),
+                    ))
                     .await
                     .unwrap();
             }
@@ -195,7 +210,7 @@ async fn distribute_postgres_events(app_state: web::Data<AppState>) {
 #[derive(Serialize, Deserialize, Debug)]
 struct PostgresEvent<T> {
     action: String,
-    record: T
+    record: T,
 }
 
 #[actix_web::main]
@@ -249,7 +264,6 @@ async fn main() -> std::io::Result<()> {
 
     server.run().await
 }
-
 
 async fn websocket(
     req: HttpRequest,

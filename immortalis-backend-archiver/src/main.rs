@@ -12,7 +12,7 @@ use immortalis_backend_common::database_models::scheduled_archival::ScheduledArc
 use immortalis_backend_common::database_models::video::InsertableVideo;
 use immortalis_backend_common::database_models::video_status::VideoStatus;
 use immortalis_backend_common::env_var_names;
-use immortalis_backend_common::schema::{scheduled_archivals, videos, files};
+use immortalis_backend_common::schema::{files, scheduled_archivals, videos};
 use tokio::fs;
 use youtube_dl::YoutubeDl;
 
@@ -36,7 +36,9 @@ async fn main() {
 
     let file_storage_location = std::env::var(env_var_names::FILE_STORAGE_LOCATION)
         .expect("FILE_STORAGE_LOCATION invalid or missing");
-    let skip_download = std::env::var(env_var_names::SKIP_DOWNLOAD).unwrap_or_default().len() > 0;
+    let skip_download = !std::env::var(env_var_names::SKIP_DOWNLOAD)
+        .unwrap_or_default()
+        .is_empty();
 
     // spawn 4 workers
     for _ in 0..std::env::var(env_var_names::ARCHIVER_THREAD_COUNT)
