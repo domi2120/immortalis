@@ -1,4 +1,5 @@
 use std::collections::hash_map::HashMap;
+use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
@@ -29,6 +30,7 @@ use tracing::{debug, info};
 use crate::scheduled_archivals_event_handler::Message;
 pub mod scheduled_archivals_event_handler;
 pub mod request_models;
+pub mod utilities;
 use request_models::{ScheduleRequest, SearchQuery, GetFileRequestData};
 
 #[get("/health")]
@@ -70,7 +72,6 @@ async fn tracked_collection(
     HttpResponse::Ok()
 }
 
-
 #[post("schedule")]
 async fn schedule(
     schedule_request: web::Json<ScheduleRequest>,
@@ -80,15 +81,7 @@ async fn schedule(
         return HttpResponse::BadRequest();
     }
 
-    // trim query params other than 'v' which is the video (trims for example playlists)
-    let url = url::Url::parse(&schedule_request.url).unwrap();
-    let view_query_param = url.query_pairs().filter(|x| x.0 == "v");
-    let mut new_url = url.clone();
-    new_url
-        .query_pairs_mut()
-        .clear()
-        .extend_pairs(view_query_param);
-    let video_url = new_url.to_string();
+    let video_url = crate::utilities::filter_query_pairs(&schedule_request.url, vec!["v"]);
 
     let inserted = insert_into(scheduled_archivals::table)
         .values(scheduled_archivals::url.eq(&video_url))
