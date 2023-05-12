@@ -50,12 +50,18 @@ CREATE TABLE tracked_collections (
 CREATE OR REPLACE FUNCTION notify_delete_insert()
 RETURNS trigger AS
 $$
+DECLARE
+  payload TEXT;
+  rec RECORD;
 BEGIN
 	if tg_op = 'INSERT' then
-    	EXECUTE FORMAT('NOTIFY %s_insert , ''%s''', TG_TABLE_NAME, NEW.id);
+      rec := NEW;
 	elsif tg_op = 'DELETE' then
-    	EXECUTE FORMAT('NOTIFY %s_insert, ''%s''', TG_TABLE_NAME, OLD.id);
+      REC := OLD;
 	end if;
+
+  payload := json_build_object('action',LOWER(TG_OP),'record',row_to_json(rec));
+  PERFORM pg_notify('scheduled_archivals', payload);
   RETURN NEW;
 END;
 $$ LANGUAGE 'plpgsql';

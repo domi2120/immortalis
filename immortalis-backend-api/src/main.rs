@@ -205,8 +205,7 @@ async fn distribute_postgres_events(app_state: web::Data<AppState>) {
 
     listener
     .listen_all(vec![
-            "scheduled_archivals",
-            "scheduled_archivals_insert",
+            "scheduled_archivals"
         ])
         .await
         .unwrap();
@@ -303,7 +302,7 @@ impl Actor for ScheduledArchivalsEventHandler {
         self.web_socket_connections
             .write()
             .unwrap()
-            .insert("test".to_owned(), ctx.address());
+            .insert(Uuid::new_v4().to_string(), ctx.address());
     }
 }
 
