@@ -1,3 +1,6 @@
+use core::arch;
+use std::collections::HashSet;
+
 use chrono::Duration;
 use diesel::QueryDsl;
 use diesel::{insert_into, update, BoolExpressionMethods, ExpressionMethods};
@@ -8,7 +11,7 @@ use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use dotenvy::dotenv;
 use immortalis_backend_common::database_models::tracked_collection::TrackedCollection;
 use immortalis_backend_common::env_var_names;
-use immortalis_backend_common::schema::{scheduled_archivals, tracked_collections};
+use immortalis_backend_common::schema::{scheduled_archivals, tracked_collections, videos};
 
 use serde_json::Value;
 use tracing::info;
@@ -144,6 +147,8 @@ async fn track(pool: Pool<AsyncPgConnection>) {
 
                 let tracked_collection = youtube_dl_output.into_playlist().unwrap();
 
+                let archived_video_urls = HashSet::<String>::from_iter(videos::table.select(videos::original_url).load::<String>(db_connection).await.unwrap());
+
                 if let Some(videos) = tracked_collection.entries {
                     for video in videos {
                         let url = video.webpage_url.unwrap();
@@ -163,6 +168,10 @@ async fn track(pool: Pool<AsyncPgConnection>) {
                                 .unwrap();
                             info!("Inserted {} into TrackedCollections", url);
                             continue;
+                        }
+
+                        if archived_video_urls.contains(&url) {
+                            info!("{} has already been archived and will not be scheduled again", url)
                         }
 
                         insert_into(scheduled_archivals::table)
