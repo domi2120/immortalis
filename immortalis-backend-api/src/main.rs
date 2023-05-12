@@ -2,8 +2,7 @@ use std::collections::hash_map::HashMap;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
-use actix::prelude::*;
-use actix::{Actor, Addr, Handler, StreamHandler};
+use actix::Addr;
 use actix_web::http::header::{Charset, ContentDisposition, DispositionParam, ExtendedValue};
 use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use actix_web_actors::ws::{self};
@@ -20,11 +19,16 @@ use diesel::{BelongingToDsl, PgTextExpressionMethods, QueryDsl};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use scheduled_archivals_event_handler::ScheduledArchivalsEventHandler;
 use serde::{Deserialize, Serialize};
 
 use dotenvy::dotenv;
 use tracing::{debug, info};
-use uuid::Uuid;
+
+use crate::scheduled_archivals_event_handler::Message;
+pub mod scheduled_archivals_event_handler;
+pub mod request_models;
+use request_models::{ScheduleRequest, SearchQuery, GetFileRequestData};
 
 #[get("/health")]
 async fn health() -> impl Responder {
@@ -65,15 +69,6 @@ async fn tracked_collection(
     HttpResponse::Ok()
 }
 
-#[derive(Deserialize)]
-struct ScheduleRequest {
-    url: String,
-}
-
-#[derive(Deserialize)]
-struct SearchQuery {
-    term: Option<String>,
-}
 
 #[post("schedule")]
 async fn schedule(
@@ -135,12 +130,6 @@ async fn search(query: web::Query<SearchQuery>, app_state: web::Data<AppState>) 
         .collect::<Vec<VideoWithDownload>>();
 
     HttpResponse::Ok().json(videos_with_downloads)
-}
-
-#[derive(Deserialize)]
-struct GetFileRequestData {
-    file_id: Uuid,
-    is_thumbnail: bool,
 }
 
 #[get("/file")]
@@ -285,46 +274,6 @@ async fn main() -> std::io::Result<()> {
     server.run().await
 }
 
-/// Chat server sends this messages to session
-#[derive(Message)]
-#[rtype(result = "()")]
-pub struct Message(pub String);
-
-#[derive(Clone)]
-pub struct ScheduledArchivalsEventHandler {
-    web_socket_connections: Arc<RwLock<HashMap<String, Addr<ScheduledArchivalsEventHandler>>>>,
-}
-
-impl Actor for ScheduledArchivalsEventHandler {
-    type Context = actix_web_actors::ws::WebsocketContext<Self>;
-
-    fn started(&mut self, ctx: &mut Self::Context) {
-        self.web_socket_connections
-            .write()
-            .unwrap()
-            .insert(Uuid::new_v4().to_string(), ctx.address());
-    }
-}
-
-impl Handler<Message> for ScheduledArchivalsEventHandler {
-    type Result = ();
-
-    fn handle(&mut self, msg: Message, ctx: &mut Self::Context) -> Self::Result {
-        ctx.text(msg.0);
-    }
-}
-
-/// Handler for ws::Message message
-impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ScheduledArchivalsEventHandler {
-    fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
-        match msg {
-            Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
-            Ok(ws::Message::Text(text)) => ctx.text(text),
-            Ok(ws::Message::Binary(bin)) => ctx.binary(bin),
-            _ => (),
-        }
-    }
-}
 
 async fn websocket(
     req: HttpRequest,
