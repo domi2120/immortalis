@@ -174,7 +174,6 @@ async fn distribute_postgres_events(app_state: web::Data<AppState>) {
     .await
     .unwrap();
 
-    info!("doing stuff");
     let mut listener = sqlx::postgres::PgListener::connect_with(&pool)
     .await
     .unwrap();
@@ -274,6 +273,5 @@ async fn websocket(
         &req,
         stream,
     );
-    print!("baum");
     resp
 }
