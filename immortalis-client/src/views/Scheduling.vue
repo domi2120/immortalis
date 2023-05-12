@@ -58,7 +58,7 @@
           schedules.value.push(data.record);
           break;
         case "delete":
-          schedules.value.splice(schedules.value.findIndex(s => s.id == data.record.id))
+          schedules.value.splice(schedules.value.findIndex(s => s.id == data.record.id), 1)
           break;
       }
     }

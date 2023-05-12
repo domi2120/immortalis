@@ -1,6 +1,7 @@
 use actix::prelude::*;
 use actix::{Actor, Addr, Handler, StreamHandler};
 use actix_web_actors::ws::{self};
+use tracing::info;
 use std::collections::hash_map::HashMap;
 use std::sync::{Arc, RwLock};
 use uuid::Uuid;
@@ -8,16 +9,29 @@ use uuid::Uuid;
 #[derive(Clone)]
 pub struct ScheduledArchivalsEventHandler {
     pub web_socket_connections: Arc<RwLock<HashMap<String, Addr<ScheduledArchivalsEventHandler>>>>,
+    id: Uuid
+}
+
+impl ScheduledArchivalsEventHandler {
+    pub fn new (web_socket_connections: Arc<RwLock<HashMap<String, Addr<ScheduledArchivalsEventHandler>>>>) -> ScheduledArchivalsEventHandler {
+        ScheduledArchivalsEventHandler { web_socket_connections: web_socket_connections, id: Uuid::new_v4() }
+    }
 }
 
 impl Actor for ScheduledArchivalsEventHandler {
     type Context = actix_web_actors::ws::WebsocketContext<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
+        info!("Actor started for id {}", self.id);
         self.web_socket_connections
             .write()
             .unwrap()
-            .insert(Uuid::new_v4().to_string(), ctx.address());
+            .insert(self.id.to_string(), ctx.address());
+    }
+
+    fn stopped(&mut self, ctx: &mut Self::Context) {
+        self.web_socket_connections.write().unwrap().remove(&self.id.to_string());
+        info!("Actor stopped for id {}", self.id);
     }
 }
 

@@ -271,9 +271,7 @@ async fn websocket(
     app_state: web::Data<AppState>,
 ) -> Result<HttpResponse, actix_web::error::Error> {
     ws::start(
-        ScheduledArchivalsEventHandler {
-            web_socket_connections: app_state.web_socket_connections.clone(),
-        },
+        ScheduledArchivalsEventHandler::new(app_state.web_socket_connections.clone()),
         &req,
         stream,
     )
