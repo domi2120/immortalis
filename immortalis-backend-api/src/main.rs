@@ -129,7 +129,7 @@ async fn get_file(
     req: HttpRequest,
     query: web::Query<GetFileRequestData>,
     app_state: web::Data<AppState>,
-) -> impl Responder {
+) -> Result<HttpResponse, actix_web::error::Error> {
     let mut conn = app_state.db_connection_pool.get().await.unwrap();
 
     let f: immortalis_backend_common::database_models::file::File = files::table
@@ -144,20 +144,22 @@ async fn get_file(
         &f.id.to_string(),
         &f.file_extension
     ))
-    .await
-    .unwrap();
-    response
-        .set_content_disposition(ContentDisposition {
-            disposition: actix_web::http::header::DispositionType::Attachment,
-            parameters: vec![DispositionParam::FilenameExt(ExtendedValue {
-                value: format!("{}.{}", f.file_name, &f.file_extension)
-                    .as_bytes()
-                    .to_vec(),
-                charset: Charset::Ext("UTF-8".to_string()),
-                language_tag: None,
-            })],
-        })
-        .into_response(&req)
+    .await?;
+
+    Ok(
+        response
+            .set_content_disposition(ContentDisposition {
+                disposition: actix_web::http::header::DispositionType::Attachment,
+                parameters: vec![DispositionParam::FilenameExt(ExtendedValue {
+                    value: format!("{}.{}", f.file_name, &f.file_extension)
+                        .as_bytes()
+                        .to_vec(),
+                    charset: Charset::Ext("UTF-8".to_string()),
+                    language_tag: None,
+                })],
+            })
+            .into_response(&req)
+    )
 }
 
 struct AppState {
