@@ -7,11 +7,12 @@ use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use dotenvy::dotenv;
+use immortalis_backend_common::database_models::file::File;
 use immortalis_backend_common::database_models::scheduled_archival::ScheduledArchival;
 use immortalis_backend_common::database_models::video::InsertableVideo;
 use immortalis_backend_common::database_models::video_status::VideoStatus;
 use immortalis_backend_common::env_var_names;
-use immortalis_backend_common::schema::{scheduled_archivals, videos};
+use immortalis_backend_common::schema::{scheduled_archivals, videos, files};
 use tokio::fs;
 use youtube_dl::YoutubeDl;
 
@@ -114,8 +115,8 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
             let thumbnail_address = yt_dl_video.thumbnail.unwrap();
             let thumbnail_id = uuid::Uuid::new_v4();
             let thumbnail_extension = thumbnail_address.split('.').last().unwrap();
-            fs::create_dir_all(file_storage_location.to_string()  + "thumbnails").await.unwrap();
-            fs::write(file_storage_location.to_string() + "thumbnails/" + &thumbnail_id.to_string() + "." + thumbnail_extension, resp).await.unwrap();
+
+            fs::write(file_storage_location.to_string() + &thumbnail_id.to_string() + "." + thumbnail_extension, resp).await.unwrap();
 
             let file_id = uuid::Uuid::new_v4();
             let video = InsertableVideo {
@@ -138,13 +139,14 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
                 status:
                     immortalis_backend_common::database_models::video_status::VideoStatus::BeingArchived,
                 file_id,
-                file_extension: "mkv".to_string(),
                 thumbnail_id,
-                thumbnail_extension: thumbnail_extension.to_string()
             };
 
+            insert_into(files::table).values(File {id: video.file_id, file_name: video.title.to_string(), file_extension: "mkv".to_string(), size: 5}).execute(db_connection).await.unwrap();
+            insert_into(files::table).values(File {id: thumbnail_id, file_name: video.title.to_string(), file_extension: thumbnail_extension.to_string(), size: 5}).execute(db_connection).await.unwrap();
+
             insert_into(videos::table)
-                .values(video)
+                .values(&video)
                 .on_conflict_do_nothing()
                 .execute(db_connection)
                 .await
@@ -204,6 +206,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
                 .execute(db_connection)
                 .await
                 .unwrap();
+
         } else {
             // try again in 10 minutes
             update(scheduled_archivals::table)

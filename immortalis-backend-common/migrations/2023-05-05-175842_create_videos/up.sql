@@ -1,5 +1,12 @@
 CREATE TYPE video_status AS ENUM ('archived', 'scheduled_for_archival', 'being_archived', 'archivation_failed'); -- these may not start with Uppercase
 
+CREATE TABLE files (
+  id UUID not null primary key DEFAULT gen_random_uuid(),
+  file_name varchar NOT NULL,
+  file_extension varchar NOT NULL,
+  size bigint NOT NULL
+);
+
 CREATE TABLE videos (
   id int GENERATED ALWAYS AS IDENTITY,
   title VARCHAR NOT NULL,
@@ -12,10 +19,14 @@ CREATE TABLE videos (
   original_url varchar NOT NULL UNIQUE,
   status video_status NOT NULL,
   file_id UUID NOT NULL,
-  file_extension VARCHAR NOT NULL,
   thumbnail_id UUID NOT NULL,
-  thumbnail_extension VARCHAR NOT NULL,
-  PRIMARY KEY(id)
+  PRIMARY KEY(id),
+    CONSTRAINT fk_file_video
+        foreign key (file_id)
+            references files(id),
+    CONSTRAINT fk_file_thumbnail
+        foreign key (thumbnail_id)
+            references files(id)
 );
 
 CREATE TABLE downloads (
@@ -45,7 +56,6 @@ CREATE TABLE tracked_collections (
     tracking_started_at timestamp without time zone NOT NULL DEFAULT now(),
     last_checked timestamp without time zone
 );
-
 
 CREATE OR REPLACE FUNCTION notify_delete_insert()
 RETURNS trigger AS

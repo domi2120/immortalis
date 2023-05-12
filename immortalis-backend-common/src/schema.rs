@@ -16,6 +16,15 @@ diesel::table! {
 }
 
 diesel::table! {
+    files (id) {
+        id -> Uuid,
+        file_name -> Varchar,
+        file_extension -> Varchar,
+        size -> Int8,
+    }
+}
+
+diesel::table! {
     scheduled_archivals (id) {
         id -> Int4,
         url -> Varchar,
@@ -49,9 +58,7 @@ diesel::table! {
         original_url -> Varchar,
         status -> VideoStatus,
         file_id -> Uuid,
-        file_extension -> Varchar,
         thumbnail_id -> Uuid,
-        thumbnail_extension -> Varchar,
     }
 }
 
@@ -59,6 +66,7 @@ diesel::joinable!(downloads -> videos (video_id));
 
 diesel::allow_tables_to_appear_in_same_query!(
     downloads,
+    files,
     scheduled_archivals,
     tracked_collections,
     videos,

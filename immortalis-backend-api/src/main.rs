@@ -7,12 +7,13 @@ use actix_web::http::header::{Charset, ContentDisposition, DispositionParam, Ext
 use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use actix_web_actors::ws::{self};
 use immortalis_backend_common::data_transfer_models::video_with_downloads::VideoWithDownload;
+use immortalis_backend_common::database_models::file;
 use immortalis_backend_common::database_models::tracked_collection::TrackedCollection;
 use immortalis_backend_common::database_models::{
     download::Download, scheduled_archival::ScheduledArchival, video::Video,
 };
 use immortalis_backend_common::env_var_names;
-use immortalis_backend_common::schema::{scheduled_archivals, tracked_collections, videos};
+use immortalis_backend_common::schema::{scheduled_archivals, tracked_collections, videos, files};
 
 use diesel::{insert_into, ExpressionMethods, GroupedBy};
 use diesel::{BelongingToDsl, PgTextExpressionMethods, QueryDsl};
@@ -139,36 +140,22 @@ async fn get_file(
     app_state: web::Data<AppState>,
 ) -> impl Responder {
     let mut conn = app_state.db_connection_pool.get().await.unwrap();
-    let mut table = videos::table.into_boxed();
 
-    let file_extension: String;
-    let file_name: String;
-    let mut location = app_state.file_storage_location.to_owned();
-    let video: Video;
+    let f: immortalis_backend_common::database_models::file::File = files::table.find(query.file_id)
+        .first(&mut conn)
+        .await
+        .unwrap();
 
-    if query.is_thumbnail {
-        table = table.filter(videos::thumbnail_id.eq(query.file_id));
-        video = table.first::<Video>(&mut conn).await.unwrap();
-        file_name = video.thumbnail_id.to_string();
-        file_extension = video.thumbnail_extension.to_string();
-        location += "thumbnails/";
-    } else {
-        table = table.filter(videos::file_id.eq(query.file_id));
-        video = table.first::<Video>(&mut conn).await.unwrap();
-        file_name = video.file_id.to_string();
-        file_extension = video.file_extension.to_string();
-    }
-
-    debug!("{}{}.{}", location, &file_name, &file_extension);
+    let location = app_state.file_storage_location.to_owned();
     let response =
-        actix_files::NamedFile::open_async(location + &file_name + "." + &file_extension)
-            .await
-            .unwrap();
+    actix_files::NamedFile::open_async(location + &f.id.to_string() + "." + &f.file_extension)
+        .await
+        .unwrap();
     response
         .set_content_disposition(ContentDisposition {
             disposition: actix_web::http::header::DispositionType::Attachment,
             parameters: vec![DispositionParam::FilenameExt(ExtendedValue {
-                value: (video.title + "." + &file_extension).as_bytes().to_vec(),
+                value: (f.file_name + "." + &f.file_extension).as_bytes().to_vec(),
                 charset: Charset::Ext("UTF-8".to_string()),
                 language_tag: None,
             })],
