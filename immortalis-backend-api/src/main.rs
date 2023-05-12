@@ -81,10 +81,21 @@ async fn schedule(
 
     let video_url = crate::utilities::filter_query_pairs(&schedule_request.url, vec!["v"]);
 
+    let db_connection = &mut app_state.db_connection_pool.get().await.unwrap();
+
+    let already_exists = match videos::table.filter(videos::original_url.eq(&video_url)).first::<Video>(db_connection).await {
+        Ok(_x) => true,
+        Err(_x) => false
+    };
+
+    if already_exists {
+        return HttpResponse::Ok();
+    }
+
     let inserted = insert_into(scheduled_archivals::table)
         .values(scheduled_archivals::url.eq(&video_url))
         .on_conflict_do_nothing()
-        .execute(&mut app_state.db_connection_pool.get().await.unwrap())
+        .execute(db_connection)
         .await
         .unwrap();
     info!("Scheduled {} entries for url {}", inserted, video_url);
