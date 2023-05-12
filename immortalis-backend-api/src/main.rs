@@ -1,5 +1,4 @@
 use std::collections::hash_map::HashMap;
-use std::ops::Deref;
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
@@ -8,7 +7,6 @@ use actix_web::http::header::{Charset, ContentDisposition, DispositionParam, Ext
 use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use actix_web_actors::ws::{self};
 use immortalis_backend_common::data_transfer_models::video_with_downloads::VideoWithDownload;
-use immortalis_backend_common::database_models::file;
 use immortalis_backend_common::database_models::tracked_collection::TrackedCollection;
 use immortalis_backend_common::database_models::{
     download::Download, scheduled_archival::ScheduledArchival, video::Video,
@@ -25,7 +23,7 @@ use scheduled_archivals_event_handler::ScheduledArchivalsEventHandler;
 use serde::{Deserialize, Serialize};
 
 use dotenvy::dotenv;
-use tracing::{debug, info};
+use tracing::info;
 
 use crate::scheduled_archivals_event_handler::Message;
 pub mod scheduled_archivals_event_handler;
@@ -139,16 +137,15 @@ async fn get_file(
         .await
         .unwrap();
 
-    let location = app_state.file_storage_location.to_owned();
     let response =
-    actix_files::NamedFile::open_async(location + &f.id.to_string() + "." + &f.file_extension)
+    actix_files::NamedFile::open_async(format!("{}{}.{}",app_state.file_storage_location.to_owned(), &f.id.to_string(),&f.file_extension))
         .await
         .unwrap();
     response
         .set_content_disposition(ContentDisposition {
             disposition: actix_web::http::header::DispositionType::Attachment,
             parameters: vec![DispositionParam::FilenameExt(ExtendedValue {
-                value: (f.file_name + "." + &f.file_extension).as_bytes().to_vec(),
+                value: format!("{}.{}",f.file_name, &f.file_extension).as_bytes().to_vec(),
                 charset: Charset::Ext("UTF-8".to_string()),
                 language_tag: None,
             })],
@@ -259,12 +256,11 @@ async fn websocket(
     stream: web::Payload,
     app_state: web::Data<AppState>,
 ) -> Result<HttpResponse, actix_web::error::Error> {
-    let resp = ws::start(
+    ws::start(
         ScheduledArchivalsEventHandler {
             web_socket_connections: app_state.web_socket_connections.clone(),
         },
         &req,
         stream,
-    );
-    resp
+    )
 }

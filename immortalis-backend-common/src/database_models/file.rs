@@ -1,5 +1,4 @@
 use crate::schema::files;
-use crate::database_models::video::Video;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
