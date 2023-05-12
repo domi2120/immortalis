@@ -144,8 +144,16 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
                 thumbnail_id,
             };
 
-            insert_into(files::table).values(File {id: video.file_id, file_name: video.title.to_string(), file_extension: "mkv".to_string(), size: 5}).execute(db_connection).await.unwrap();
-            insert_into(files::table).values(File {id: thumbnail_id, file_name: video.title.to_string(), file_extension: thumbnail_extension.to_string(), size: 5}).execute(db_connection).await.unwrap();
+            insert_into(files::table)
+                .values(File {id: video.file_id, file_name: video.title.to_string(), file_extension: "mkv".to_string(), size: 5})
+                .execute(db_connection)
+                .await
+                .unwrap();
+            insert_into(files::table)
+                .values(File {id: thumbnail_id, file_name: video.title.to_string(), file_extension: thumbnail_extension.to_string(), size: 5})
+                .execute(db_connection)
+                .await
+                .unwrap();
 
             insert_into(videos::table)
                 .values(&video)
