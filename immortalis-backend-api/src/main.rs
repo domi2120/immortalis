@@ -95,7 +95,7 @@ async fn schedule(
 #[get("/search")]
 async fn search(query: web::Query<SearchQuery>, app_state: web::Data<AppState>) -> impl Responder {
     let mut conn = app_state.db_connection_pool.get().await.unwrap();
-    let mut results = videos::table.into_boxed();
+    let mut results = videos::table.order(videos::archived_date.desc()).into_boxed();
 
     if let Some(x) = &query.term {
         results = results.filter(videos::title.ilike("%".to_string() + x + "%"))
