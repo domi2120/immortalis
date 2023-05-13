@@ -38,28 +38,27 @@ async fn main() {
     );
     let application_connection_pool = Pool::builder(config).build().unwrap();
 
-    let file_storage_location = &env_var_config.file_storage_location;
-    let skip_download = env_var_config.skip_download;
-
     // spawn 4 workers
     for _ in 0..env_var_config.archiver_thread_count
     {
         let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
 
         let worker_connection_pool = application_connection_pool.clone();
-        let worker_file_storage_location = file_storage_location.clone();
+        let worker_env_var_config = env_var_config.clone();
+        
         tokio::spawn(async move {
+            let task_env_var_config = worker_env_var_config.clone();
             let task_connection_pool = worker_connection_pool.clone();
             loop {
                 interval_timer.tick().await;
                 archive(
                     task_connection_pool.clone(),
-                    &skip_download,
-                    &worker_file_storage_location,
+                    task_env_var_config.clone()
                 )
                 .await;
             }
         });
+        
     }
 
     let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(50));
@@ -68,7 +67,7 @@ async fn main() {
     }
 }
 
-async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_storage_location: &str) {
+async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig>) {
     let db_connection = &mut pool.get().await.unwrap();
     let _g = db_connection.transaction::<_, diesel::result::Error ,_>(|db_connection| async move {
         let results = scheduled_archivals::table
@@ -117,7 +116,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
             let mut thumbnail_extension = thumbnail_address.split('.').last().unwrap();
             thumbnail_extension = &thumbnail_extension[0..thumbnail_extension.find("?").unwrap_or(thumbnail_extension.len())]; // trim params that may follow the extension
 
-            fs::write(file_storage_location.to_string() + &thumbnail_id.to_string() + "." + thumbnail_extension, &resp).await.unwrap();
+            fs::write(env_var_config.file_storage_location.clone() + &thumbnail_id.to_string() + "." + thumbnail_extension, &resp).await.unwrap();
 
             let file_id = uuid::Uuid::new_v4();
             let video = InsertableVideo {
@@ -154,12 +153,12 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
             let mut file_size = yt_dl_video.filesize.unwrap_or(yt_dl_video.filesize_approx.unwrap_or(0.0) as i64);
 
             // if SKIP_DOWNLOAD is set, we skip the download
-            if !skip_download
+            if !env_var_config.skip_download
             {
                 let cmd = Command::new("yt-dlp")
                     .arg(&result.url)
                     .arg("-o")
-                    .arg(file_storage_location.to_string() + file_id.to_string().as_str() + ".%(ext)s")
+                    .arg(env_var_config.file_storage_location.to_string() + file_id.to_string().as_str() + ".%(ext)s")
                     .arg("--embed-thumbnail") // webm doesnt support embedded thumbnails, so we should get .mkv files
                     .arg("--embed-metadata")
                     .arg("--embed-chapters")
@@ -169,13 +168,13 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
                     .arg("60")
                     .arg("--live-from-start")
                     .arg("--print")
-                    .arg(file_storage_location.to_string() + "%(title)s",
+                    .arg(env_var_config.file_storage_location.to_string() + "%(title)s",
                     )
                     .arg("--no-simulate")
                     .output();
 
                 cmd.await.unwrap();
-                file_size = fs::File::open(file_storage_location.to_string() + file_id.to_string().as_str() + ".mkv").await.unwrap().metadata().await.unwrap().len() as i64;
+                file_size = fs::File::open(env_var_config.file_storage_location.to_string() + file_id.to_string().as_str() + ".mkv").await.unwrap().metadata().await.unwrap().len() as i64;
             }
 
             // insert file for video
@@ -194,7 +193,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
 
             //tokio::time::sleep(tokio::time::Duration::from_secs(15)).await; //placeholder for actual download
             // if duration is 0 (video), we're done. If it isnt (livestream), we need to reload the metadata and update the duration
-            if video_duration != 0 || *skip_download {
+            if video_duration != 0 || env_var_config.skip_download {
                 update(videos::table)
                     .set(videos::status.eq(VideoStatus::Archived))
                     .execute(db_connection)
