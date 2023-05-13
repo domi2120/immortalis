@@ -116,7 +116,8 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
 
             let thumbnail_address = yt_dl_video.thumbnail.unwrap();
             let thumbnail_id = uuid::Uuid::new_v4();
-            let thumbnail_extension = thumbnail_address.split('.').last().unwrap();
+            let mut thumbnail_extension = thumbnail_address.split('.').last().unwrap();
+            thumbnail_extension = &thumbnail_extension[0..thumbnail_extension.find("?").unwrap_or(thumbnail_extension.len())]; // trim params that may follow the extension
 
             fs::write(file_storage_location.to_string() + &thumbnail_id.to_string() + "." + thumbnail_extension, &resp).await.unwrap();
 
