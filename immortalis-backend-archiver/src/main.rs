@@ -158,7 +158,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
                 let cmd = Command::new("yt-dlp")
                     .arg(&result.url)
                     .arg("-o")
-                    .arg(env_var_config.file_storage_location.to_string() + file_id.to_string().as_str() + ".%(ext)s")
+                    .arg(env_var_config.temp_file_storage_location.to_string() + file_id.to_string().as_str() + ".%(ext)s")
                     .arg("--embed-thumbnail") // webm doesnt support embedded thumbnails, so we should get .mkv files
                     .arg("--embed-metadata")
                     .arg("--embed-chapters")
@@ -174,7 +174,11 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
                     .output();
 
                 cmd.await.unwrap();
-                file_size = fs::File::open(env_var_config.file_storage_location.to_string() + file_id.to_string().as_str() + ".mkv").await.unwrap().metadata().await.unwrap().len() as i64;
+
+                let temp_file_name = env_var_config.temp_file_storage_location.to_string() + file_id.to_string().as_str() + ".mkv";
+                file_size = fs::File::open(&temp_file_name).await.unwrap().metadata().await.unwrap().len() as i64;
+                // move it from temp storage to longtime storage. This may later be replaced by for example an external S3 or similar
+                fs::rename(&temp_file_name, env_var_config.file_storage_location.to_string() + file_id.to_string().as_str() + ".mkv").await.unwrap();
             }
 
             // insert file for video
