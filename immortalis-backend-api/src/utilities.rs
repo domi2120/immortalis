@@ -4,9 +4,9 @@ use std::ops::Deref;
 /// ```rust
 /// assert_eq(filter_query_pairs("https://example.net/?lang=en&foo=bar".toString(), vec!["lang"]), "https://example.net/?lang=en")
 /// ```
-pub fn filter_query_pairs(initial_url: &str, accepted_parameter_names: Vec<&str>) -> String {
+pub fn filter_query_pairs(initial_url: &str, accepted_parameter_names: Vec<&str>) -> Result<String, url::ParseError> {
     // trim query params other than 'v' which is the video (trims for example playlists)
-    let url = url::Url::parse(initial_url).unwrap();
+    let url = url::Url::parse(initial_url)?;
     let view_query_param = url
         .query_pairs()
         .filter(|x| accepted_parameter_names.contains(&x.0.deref()));
@@ -15,5 +15,5 @@ pub fn filter_query_pairs(initial_url: &str, accepted_parameter_names: Vec<&str>
         .query_pairs_mut()
         .clear()
         .extend_pairs(view_query_param);
-    new_url.to_string()
+    Ok(new_url.to_string())
 }

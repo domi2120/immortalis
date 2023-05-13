@@ -22,6 +22,9 @@
   import { onUnmounted } from 'vue';
   import { Ref, ref } from 'vue';
   import { ScheduledArchival } from '@/models/scheduledArchival'
+  import { Notyf } from 'notyf';
+  import 'notyf/notyf.min.css';
+
   const url: Ref<string> = ref("");
   
   const headers = ref(
@@ -71,7 +74,7 @@
   })
   
   async function schedule() {
-    await fetch("/api/schedule",
+    let response = await fetch("/api/schedule",
     {
       method: "POST",
       body: JSON.stringify(
@@ -83,6 +86,7 @@
         }
       }
     );
+    response.ok ? new Notyf().success(`scheduled ${url.value}`) : new Notyf().error(`is already scheduled or archived ${url.value}`)
     schedules.value = await (await fetch("/api/schedule")).json();
     url.value = "";
   }

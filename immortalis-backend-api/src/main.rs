@@ -79,28 +79,31 @@ async fn schedule(
         return HttpResponse::BadRequest();
     }
 
-    let video_url = crate::utilities::filter_query_pairs(&schedule_request.url, vec!["v"]);
+    if let Ok(video_url) = crate::utilities::filter_query_pairs(&schedule_request.url, vec!["v"]) {
+        
+        let db_connection = &mut app_state.db_connection_pool.get().await.unwrap();
 
-    let db_connection = &mut app_state.db_connection_pool.get().await.unwrap();
+        let already_exists = match videos::table.filter(videos::original_url.eq(&video_url)).first::<Video>(db_connection).await {
+            Ok(_x) => true,
+            Err(_x) => false
+        };
 
-    let already_exists = match videos::table.filter(videos::original_url.eq(&video_url)).first::<Video>(db_connection).await {
-        Ok(_x) => true,
-        Err(_x) => false
-    };
+        if already_exists {
+            return HttpResponse::Ok();
+        }
 
-    if already_exists {
-        return HttpResponse::Ok();
+        let inserted = insert_into(scheduled_archivals::table)
+            .values(scheduled_archivals::url.eq(&video_url))
+            .on_conflict_do_nothing()
+            .execute(db_connection)
+            .await
+            .unwrap();
+        info!("Scheduled {} entries for url {}", inserted, video_url);
+
+        HttpResponse::Ok()
+    } else {
+        return HttpResponse::BadRequest()
     }
-
-    let inserted = insert_into(scheduled_archivals::table)
-        .values(scheduled_archivals::url.eq(&video_url))
-        .on_conflict_do_nothing()
-        .execute(db_connection)
-        .await
-        .unwrap();
-    info!("Scheduled {} entries for url {}", inserted, video_url);
-
-    HttpResponse::Ok()
 }
 
 #[get("/search")]
