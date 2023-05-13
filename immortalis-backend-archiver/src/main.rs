@@ -118,7 +118,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
             let thumbnail_id = uuid::Uuid::new_v4();
             let thumbnail_extension = thumbnail_address.split('.').last().unwrap();
 
-            fs::write(file_storage_location.to_string() + &thumbnail_id.to_string() + "." + thumbnail_extension, resp).await.unwrap();
+            fs::write(file_storage_location.to_string() + &thumbnail_id.to_string() + "." + thumbnail_extension, &resp).await.unwrap();
 
             let file_id = uuid::Uuid::new_v4();
             let video = InsertableVideo {
@@ -144,23 +144,15 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
                 thumbnail_id,
             };
 
+            // insert file for thumbnail
             insert_into(files::table)
-                .values(File {id: video.file_id, file_name: video.title.to_string(), file_extension: "mkv".to_string(), size: 5})
-                .execute(db_connection)
-                .await
-                .unwrap();
-            insert_into(files::table)
-                .values(File {id: thumbnail_id, file_name: video.title.to_string(), file_extension: thumbnail_extension.to_string(), size: 5})
+                .values(File {id: thumbnail_id, file_name: video.title.to_string(), file_extension: thumbnail_extension.to_string(), size: resp.len() as i64})
                 .execute(db_connection)
                 .await
                 .unwrap();
 
-            insert_into(videos::table)
-                .values(&video)
-                .on_conflict_do_nothing()
-                .execute(db_connection)
-                .await
-                .unwrap();
+            // get file_size from youtube (exact or if its unknown then aprox). This value may be replaced by the actual size of the file after the download
+            let mut file_size = yt_dl_video.filesize.unwrap_or(yt_dl_video.filesize_approx.unwrap_or(0.0) as i64);
 
             // if SKIP_DOWNLOAD is set, we skip the download
             if !*skip_download
@@ -169,7 +161,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
                     .arg(&result.url)
                     .arg("-o")
                     .arg(file_storage_location.to_string() + file_id.to_string().as_str() + ".%(ext)s")
-                    .arg("--embed-thumbnail")
+                    .arg("--embed-thumbnail") // webm doesnt support embedded thumbnails, so we should get .mkv files
                     .arg("--embed-metadata")
                     .arg("--embed-chapters")
                     .arg("--embed-info-json")
@@ -184,7 +176,22 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
                     .output();
 
                 cmd.await.unwrap();
+                file_size = fs::File::open(file_storage_location.to_string() + file_id.to_string().as_str() + ".mkv").await.unwrap().metadata().await.unwrap().len() as i64;
             }
+
+            // insert file for video
+            insert_into(files::table)
+                .values(File {id: video.file_id, file_name: video.title.to_string(), file_extension: "mkv".to_string(), size: file_size as i64})
+                .execute(db_connection)
+                .await
+                .unwrap();
+
+            insert_into(videos::table)
+                .values(&video)
+                .on_conflict_do_nothing()
+                .execute(db_connection)
+                .await
+                .unwrap();
 
             //tokio::time::sleep(tokio::time::Duration::from_secs(15)).await; //placeholder for actual download
             // if duration is 0 (video), we're done. If it isnt (livestream), we need to reload the metadata and update the duration
