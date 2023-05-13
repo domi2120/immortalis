@@ -1,5 +1,5 @@
-use core::arch;
 use std::collections::HashSet;
+use std::sync::Arc;
 
 use chrono::Duration;
 use diesel::QueryDsl;
@@ -10,7 +10,7 @@ use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use dotenvy::dotenv;
 use immortalis_backend_common::database_models::tracked_collection::TrackedCollection;
-use immortalis_backend_common::env_var_names;
+use immortalis_backend_common::env_var_config::EnvVarConfig;
 use immortalis_backend_common::schema::{scheduled_archivals, tracked_collections, videos};
 
 use serde_json::Value;
@@ -20,6 +20,7 @@ use youtube_dl::{Playlist, YoutubeDlOutput};
 #[tokio::main]
 async fn main() {
     dotenv().ok();
+    let env_var_config = Arc::new(envy::from_env::<EnvVarConfig>().unwrap());
 
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(tracing::Level::INFO)
@@ -29,14 +30,11 @@ async fn main() {
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
-        std::env::var(env_var_names::DATABASE_URL).unwrap(),
+        &env_var_config.database_url
     );
     let application_connection_pool = Pool::builder(config).build().unwrap();
 
-    for _ in 0..std::env::var(env_var_names::TRACKER_THREAD_COUNT)
-        .unwrap()
-        .parse::<i32>()
-        .unwrap()
+    for _ in 0..env_var_config.tracker_thread_count
     {
         let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
         let worker_connection_pool = application_connection_pool.clone();

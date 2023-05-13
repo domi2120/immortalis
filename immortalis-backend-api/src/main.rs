@@ -11,7 +11,7 @@ use immortalis_backend_common::database_models::tracked_collection::TrackedColle
 use immortalis_backend_common::database_models::{
     download::Download, scheduled_archival::ScheduledArchival, video::Video,
 };
-use immortalis_backend_common::env_var_names;
+use immortalis_backend_common::env_var_config::EnvVarConfig;
 use immortalis_backend_common::schema::{files, scheduled_archivals, tracked_collections, videos};
 
 use diesel::{insert_into, ExpressionMethods, GroupedBy};
@@ -180,10 +180,11 @@ struct AppState {
     db_connection_pool: Pool<AsyncPgConnection>,
     file_storage_location: String,
     web_socket_connections: Arc<RwLock<HashMap<String, Addr<ScheduledArchivalsEventHandler>>>>,
+    env_var_config: Arc<EnvVarConfig>
 }
 
 async fn distribute_postgres_events(app_state: web::Data<AppState>) {
-    let pool = sqlx::PgPool::connect(std::env::var(env_var_names::DATABASE_URL).unwrap().as_str())
+    let pool = sqlx::PgPool::connect(&app_state.env_var_config.database_url)
         .await
         .unwrap();
 
@@ -233,6 +234,8 @@ struct PostgresEvent<T> {
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
+    let env_var_config = Arc::new(envy::from_env::<EnvVarConfig>().unwrap());
+
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(tracing::Level::INFO)
         .event_format(tracing_subscriber::fmt::format::json())
@@ -241,23 +244,23 @@ async fn main() -> std::io::Result<()> {
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
-        std::env::var(env_var_names::DATABASE_URL).unwrap(),
+        &env_var_config.database_url
     );
 
     let pool = Pool::builder(config).build().unwrap();
-    let file_storage_location = std::env::var(env_var_names::FILE_STORAGE_LOCATION)
-        .expect("FILE_STORAGE_LOCATION invalid or missing");
 
     let app_state = web::Data::new(AppState {
         db_connection_pool: pool.clone(),
-        file_storage_location: file_storage_location.clone(),
+        file_storage_location: env_var_config.file_storage_location.clone(),
         web_socket_connections: Arc::new(RwLock::new(HashMap::new())),
+        env_var_config: env_var_config.clone()
     });
 
-    let cloned_app_state = app_state.clone();
+    let worker_app_state = app_state.clone();
+    let setup_app_state = app_state.clone();
 
     actix_web::rt::spawn(async move {
-        distribute_postgres_events(cloned_app_state).await;
+        distribute_postgres_events(worker_app_state).await;
     });
 
     let mut server = HttpServer::new(move || {
@@ -274,7 +277,7 @@ async fn main() -> std::io::Result<()> {
     })
     .bind(("0.0.0.0", 8080))?;
 
-    if std::env::var(env_var_names::USE_IPV6).unwrap() == "1" {
+    if setup_app_state.env_var_config.use_ipv6 {
         server = server.bind("[::1]:8080")?; // can require special config in docker
     }
 

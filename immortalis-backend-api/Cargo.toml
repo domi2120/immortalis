@@ -22,3 +22,4 @@ uuid = { version = "1.3.2", features = ["serde", "v4"] }
 sqlx = { version = "0.6", features = [ "runtime-actix", "runtime-actix-rustls" , "postgres"] }
 actix-web-actors = "4.2.0"
 actix = { version = "0.13.0", features = ["macros"] }
+envy = "0.4"

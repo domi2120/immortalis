@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use async_process::Command;
 use chrono::Duration;
 use diesel::QueryDsl;
@@ -11,7 +13,7 @@ use immortalis_backend_common::database_models::file::File;
 use immortalis_backend_common::database_models::scheduled_archival::ScheduledArchival;
 use immortalis_backend_common::database_models::video::InsertableVideo;
 use immortalis_backend_common::database_models::video_status::VideoStatus;
-use immortalis_backend_common::env_var_names;
+use immortalis_backend_common::env_var_config::EnvVarConfig;
 use immortalis_backend_common::schema::{files, scheduled_archivals, videos};
 use tokio::fs;
 use youtube_dl::YoutubeDl;
@@ -22,6 +24,8 @@ use tracing::{info, warn};
 async fn main() {
     dotenv().ok();
 
+    let env_var_config = Arc::new(envy::from_env::<EnvVarConfig>().unwrap());
+
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(tracing::Level::INFO)
         .event_format(tracing_subscriber::fmt::format::json())
@@ -30,21 +34,15 @@ async fn main() {
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
-        std::env::var(env_var_names::DATABASE_URL).unwrap(),
+        &env_var_config.database_url
     );
     let application_connection_pool = Pool::builder(config).build().unwrap();
 
-    let file_storage_location = std::env::var(env_var_names::FILE_STORAGE_LOCATION)
-        .expect("FILE_STORAGE_LOCATION invalid or missing");
-    let skip_download = !std::env::var(env_var_names::SKIP_DOWNLOAD)
-        .unwrap_or_default()
-        .is_empty();
+    let file_storage_location = &env_var_config.file_storage_location;
+    let skip_download = env_var_config.skip_download;
 
     // spawn 4 workers
-    for _ in 0..std::env::var(env_var_names::ARCHIVER_THREAD_COUNT)
-        .unwrap()
-        .parse::<i32>()
-        .unwrap()
+    for _ in 0..env_var_config.archiver_thread_count
     {
         let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
 
@@ -156,7 +154,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, skip_download: &bool, file_stora
             let mut file_size = yt_dl_video.filesize.unwrap_or(yt_dl_video.filesize_approx.unwrap_or(0.0) as i64);
 
             // if SKIP_DOWNLOAD is set, we skip the download
-            if !*skip_download
+            if !skip_download
             {
                 let cmd = Command::new("yt-dlp")
                     .arg(&result.url)

@@ -2,11 +2,7 @@
  
 
 ## Getting Started
-* create a .env file with DATABASE_URL and FILE_STORAGE_LOCATION
-```
-DATABASE_URL="postgres://postgres:postgres@localhost/immortalis"
-FILE_STORAGE_LOCATION="../downloads/" # avoid using ~ and end with /
-```
+* create a .env file (take a look at [.env](.env) and [.docker-compose-env](docker-compose.env))
 * run `docker compose up db pgadmin` to start postgres + pgadmin
 * run `cd immortalis-backend-common && ~/.cargo/bin/diesel migration run` to run the migrations
 * run `cd ../immortalis-client && pnpm i && pnpm run dev` to run the client (localhost:3000)
