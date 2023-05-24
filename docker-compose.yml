@@ -26,8 +26,8 @@ services:
     depends_on:
       - db
     build:
-      context: .
-      dockerfile: immortalis-backend-tracker/Dockerfile
+      context: immortalis-backend
+      target: immortalis-backend-tracker
     env_file:
       - "docker-compose.env"
 
@@ -36,8 +36,8 @@ services:
     depends_on:
       - db
     build:
-      context: .
-      dockerfile: immortalis-backend-api/Dockerfile
+      context: immortalis-backend
+      target: immortalis-backend-api
     ports:
       - "8080:8080"
     env_file:
@@ -50,8 +50,8 @@ services:
     depends_on:
       - db
     build:
-      context: .
-      dockerfile: immortalis-backend-archiver/Dockerfile
+      context: immortalis-backend
+      target: immortalis-backend-archiver
     env_file:
       - "docker-compose.env"
     volumes:
