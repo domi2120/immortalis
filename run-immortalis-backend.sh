@@ -1,2 +1,3 @@
 docker compose up db pgadmin -d
-(trap 'kill 0' SIGINT; (cd immortalis-backend/immortalis-backend-api && cargo run) & (cd immortalis-backend/immortalis-backend-archiver && cargo run) & (cd immortalis-backend/immortalis-backend-tracker && cargo run) )
+
+cd immortalis-backend && (trap 'kill 0' SIGINT;(cargo run --bin immortalis-backend-api) & (cargo run --bin immortalis-backend-archiver) & (cargo run --bin immortalis-backend-tracker) )
