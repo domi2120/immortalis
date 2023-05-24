@@ -7,15 +7,6 @@ pub mod sql_types {
 }
 
 diesel::table! {
-    downloads (id) {
-        id -> Int4,
-        video_id -> Int4,
-        title -> Varchar,
-        value -> Varchar,
-    }
-}
-
-diesel::table! {
     files (id) {
         id -> Uuid,
         file_name -> Varchar,
@@ -62,10 +53,7 @@ diesel::table! {
     }
 }
 
-diesel::joinable!(downloads -> videos (video_id));
-
 diesel::allow_tables_to_appear_in_same_query!(
-    downloads,
     files,
     scheduled_archivals,
     tracked_collections,

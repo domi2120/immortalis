@@ -43,7 +43,7 @@ services:
     env_file:
       - "docker-compose.env"
     volumes:
-      - file_storage:/downloads
+      - ./downloads:/downloads
   
   archiver:
     image: immortalis-backend-archiver 
@@ -55,7 +55,7 @@ services:
     env_file:
       - "docker-compose.env"
     volumes:
-      - file_storage:/downloads
+      - ./downloads:/downloads
 
   client:
     image: immortalis-client
@@ -69,7 +69,5 @@ services:
 
 volumes:
   db:
-    driver: local
-  file_storage:
     driver: local
     
