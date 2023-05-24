@@ -1,0 +1,7 @@
+[workspace]
+members = [
+    "immortalis-backend-api",
+    "immortalis-backend-archiver",
+    "immortalis-backend-tracker",
+    "immortalis-backend-common"
+]
