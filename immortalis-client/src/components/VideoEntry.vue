@@ -12,13 +12,10 @@
             <h2 >{{ props.video.value.title }}</h2>
             {{ props.video.value.channel }} <br>
             {{ numberToDelimetedString(props.video.value.views, ",") }} views · uploaded: {{ new Date(props.video.value.uploadDate).toLocaleDateString() }} · archived: {{ new Date(props.video.value.archivedDate).toLocaleDateString() }} <br>
-            <!-- temporarily removed the data for it doesn't exist yet -->
-            <!-- 
-            <v-select :disabled="props.video.value.downloads.length < 1" label="Download" :items="props.video.value.downloads" v-model="props.video.value.selectedDownload" class="w-40" return-object/>
-            -->
             <v-btn :href="'/api/file?is_thumbnail=false&file_id=' + encodeURI(props.video.value.fileId )" :disabled="props.video.value.status != 'Archived'" @click="download(video)" >Download</v-btn>
             <v-btn :href="props.video.value.originalUrl" class="ma-2">Watch Original</v-btn>
             <v-chip>{{ props.video.value.status }}</v-chip>
+            <v-chip>{{ prettyBytes(props.video.value.videoSize) }}</v-chip>
           </v-col>
         <v-spacer></v-spacer>
     </v-container>
@@ -29,6 +26,7 @@
 import { Video } from '@/models/video';
 import { ref } from 'vue';
 import { Ref } from 'vue';
+import prettyBytes from 'pretty-bytes';
 
 let video: Ref<Video | {}> = ref({});
 
@@ -44,7 +42,6 @@ function numberToDelimetedString(x: number, delimeter: string) {
 
 async function download(video: any) {
   // not currently in use
-  //console.log(video.title + " " + video.selectedDownload.value);
 }
 
 </script>

@@ -29,18 +29,6 @@ CREATE TABLE videos (
             references files(id)
 );
 
-CREATE TABLE downloads (
-    id int GENERATED ALWAYS AS IDENTITY,
-    video_id int NOT NULL,
-    title VARCHAR NOT NULL,
-    value VARCHAR NOT NULL,
-    PRIMARY KEY(id),
-    CONSTRAINT fk_video
-        foreign key (video_id)
-            references videos(id)
-);
-
-
 CREATE TABLE scheduled_archivals (
     id int not null primary key generated always as identity,
     url varchar NOT NULL,

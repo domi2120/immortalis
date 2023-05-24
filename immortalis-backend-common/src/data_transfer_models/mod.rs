@@ -1,1 +1,1 @@
-pub mod video_with_downloads;
+pub mod video_dto;

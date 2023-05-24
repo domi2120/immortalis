@@ -6,16 +6,14 @@ use actix::Addr;
 use actix_web::http::header::{Charset, ContentDisposition, DispositionParam, ExtendedValue};
 use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use actix_web_actors::ws::{self};
-use immortalis_backend_common::data_transfer_models::video_with_downloads::VideoWithDownload;
+use immortalis_backend_common::data_transfer_models::video_dto::VideoDto;
 use immortalis_backend_common::database_models::tracked_collection::TrackedCollection;
-use immortalis_backend_common::database_models::{
-    download::Download, scheduled_archival::ScheduledArchival, video::Video,
-};
+use immortalis_backend_common::database_models::{scheduled_archival::ScheduledArchival, video::Video};
 use immortalis_backend_common::env_var_config::EnvVarConfig;
 use immortalis_backend_common::schema::{files, scheduled_archivals, tracked_collections, videos};
 
 use diesel::{insert_into, ExpressionMethods, GroupedBy};
-use diesel::{BelongingToDsl, PgTextExpressionMethods, QueryDsl};
+use diesel::{BelongingToDsl, PgTextExpressionMethods, QueryDsl, JoinOnDsl};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
@@ -24,6 +22,7 @@ use serde::{Deserialize, Serialize};
 
 use dotenvy::dotenv;
 use tracing::info;
+use uuid::Uuid;
 
 use crate::scheduled_archivals_event_handler::Message;
 pub mod request_models;
@@ -115,27 +114,19 @@ async fn search(query: web::Query<SearchQuery>, app_state: web::Data<AppState>) 
         results = results.filter(videos::title.ilike("%".to_string() + x + "%"))
     }
 
-    let results = results
-        .load::<Video>(&mut conn)
+    //let g = files::table.inner_join(videos.on).load::<File, Video>(&mut conn);
+    use diesel::SelectableHelper;
+    let results: Vec<(Video, i64)>  = results
+        .inner_join(immortalis_backend_common::schema::files::dsl::files.on(files::id.eq(videos::file_id)))
+        .select((Video::as_select(), files::size))
+        .load::<(Video, i64)>(&mut conn)
         .await
         .expect("Error loading posts");
 
-    let retrieved_downloads = Download::belonging_to(&results)
-        .load::<Download>(&mut conn)
-        .await
-        .unwrap();
-
-    let videos_with_downloads: Vec<VideoWithDownload> = retrieved_downloads
-        .grouped_by(&results)
-        .into_iter()
-        .zip(results)
-        .map(|(dl, vid)| VideoWithDownload {
-            downloads: dl,
-            video: vid,
-        })
-        .collect::<Vec<VideoWithDownload>>();
-
-    HttpResponse::Ok().json(videos_with_downloads)
+    HttpResponse::Ok().json(results.into_iter().map(move |f| VideoDto {
+        video: f.0,
+        video_size: f.1 
+    }).collect::<Vec<VideoDto>>())
 }
 
 #[get("/file")]

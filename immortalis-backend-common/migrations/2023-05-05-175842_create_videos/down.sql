@@ -1,4 +1,3 @@
-DROP TABLE downloads;
 DROP TABLE videos;
 DROP TYPE video_status;
 DROP TABLE scheduled_archivals;

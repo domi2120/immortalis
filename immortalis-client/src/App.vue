@@ -23,8 +23,8 @@
 <script setup lang="ts">
   import { Ref, ref, onMounted } from 'vue';
   import { Video } from '@/models/video';
-import router from './router';
-import { useRoute } from 'vue-router';
+  import router from './router';
+  import { useRoute } from 'vue-router';
 
   const drawerOpened = ref(false);
   let videos: Ref<Video[]> = ref([]);
@@ -33,7 +33,6 @@ import { useRoute } from 'vue-router';
 
   const search = async () => {
     videos.value = await (await fetch("api/search?" + new URLSearchParams({term: `${searchText.value}`}))).json();
-    videos.value.forEach((x: Video) => x.selectedDownload = x.downloads[0])
   }
 
   onMounted(async () => {

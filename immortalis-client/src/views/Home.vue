@@ -15,7 +15,6 @@
 
   const search = async () => {    
     videos.value = await (await fetch("api/search?" + new URLSearchParams({term: ""}))).json();
-    videos.value.forEach((x: Video) => x.selectedDownload = x.downloads[0])
   }
 
   search();

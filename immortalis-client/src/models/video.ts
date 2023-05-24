@@ -1,5 +1,3 @@
-import { Download } from "./download";
-
 export interface Video {
     title: string;
     channel: string;
@@ -8,8 +6,7 @@ export interface Video {
     archivedDate: Date;
     duration: number;
     thumbnailAddress: string;
-    downloads: Download[];
-    selectedDownload: Download;
+    videoSize: number;
     originalUrl: string;
     status: string;
     fileId: string;
