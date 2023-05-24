@@ -1,1 +1,0 @@
-( cd immortalis-backend && cargo about generate --workspace  ./about.hbs > about.html )

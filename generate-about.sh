@@ -1,0 +1,1 @@
+( cd immortalis-client && pnpm licenses ls --long > about.txt) & ( cd immortalis-backend && cargo about generate --workspace  ./about.hbs > about.html )
