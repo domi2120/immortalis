@@ -26,6 +26,7 @@
   import { onUnmounted } from 'vue';
   import { Ref, ref } from 'vue';
   import { watch } from 'vue';
+import consts from '@/consts';
 
   const url: Ref<string> = ref("");
   
@@ -59,7 +60,7 @@
     webSocket.onmessage = async (x) => {
       let messsage: WebSocketEvent<DataChangeEvent<TrackedCollection>> = JSON.parse(x.data);
       switch (messsage.channel) {
-        case "tracked_collections":
+        case consts.WebSocketChannels.TrackedCollections:
           switch (messsage.data.action) {
             case "insert":
               schedules.value.push(messsage.data.record);

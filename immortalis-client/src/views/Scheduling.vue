@@ -26,6 +26,7 @@
   import 'notyf/notyf.min.css';
   import { WebSocketEvent } from '@/models/webSocketEvent';
   import { DataChangeEvent } from '@/models/dataChangeEvent';
+import consts from '@/consts';
 
   const url: Ref<string> = ref("");
   
@@ -57,7 +58,7 @@
     webSocket.onmessage = async (x) => {
       let messsage: WebSocketEvent<DataChangeEvent<ScheduledArchival>> = JSON.parse(x.data);
       switch (messsage.channel) {
-        case "scheduled_archivals":
+        case consts.WebSocketChannels.ScheduledArchivals:
           switch (messsage.data.action) {
             case "insert":
               schedules.value.push(messsage.data.record);
