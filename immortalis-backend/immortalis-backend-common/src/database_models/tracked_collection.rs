@@ -3,7 +3,7 @@ use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize, std::fmt::Debug, Queryable, Identifiable, Selectable)]
-#[serde(rename_all = "camelCase")]
+#[serde(rename_all (serialize = "camelCase"))]
 pub struct TrackedCollection {
     pub id: i32,
     pub url: String,

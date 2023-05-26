@@ -21,7 +21,7 @@ use scheduled_archivals_event_handler::ScheduledArchivalsEventHandler;
 use serde::{Deserialize, Serialize};
 
 use dotenvy::dotenv;
-use tracing::info;
+use tracing::{info, warn};
 use uuid::Uuid;
 
 use crate::scheduled_archivals_event_handler::Message;
@@ -184,7 +184,7 @@ async fn distribute_postgres_events(app_state: web::Data<AppState>) {
         .unwrap();
 
     listener
-        .listen_all(vec!["scheduled_archivals"])
+        .listen_all(vec!["scheduled_archivals", "tracked_collections"])
         .await
         .unwrap();
 
@@ -193,23 +193,51 @@ async fn distribute_postgres_events(app_state: web::Data<AppState>) {
         interval.tick().await;
 
         while let Ok(Some(notification)) = listener.try_recv().await {
-            let postgres_event =
-                serde_json::from_str::<PostgresEvent<ScheduledArchival>>(notification.payload())
-                    .unwrap();
-
-            for con in app_state
-                .clone()
-                .web_socket_connections
-                .read()
-                .unwrap()
-                .iter()
-            {
-                con.1
-                    .send(Message(
-                        serde_json::to_string_pretty(&postgres_event).unwrap(),
-                    ))
-                    .await
-                    .unwrap();
+            match notification.channel() {
+                "scheduled_archivals" =>  {
+                    let postgres_event =
+                    serde_json::from_str::<PostgresEvent<ScheduledArchival>>(notification.payload())
+                        .unwrap();
+        
+                    for con in app_state
+                        .clone()
+                        .web_socket_connections
+                        .read()
+                        .unwrap()
+                        .iter()
+                    {
+                        con.1
+                            .send(Message(
+                                serde_json::to_string_pretty(& WebSocketEvent{channel: "scheduled_archivals".to_string(), data: &postgres_event}).unwrap(),
+                            ))
+                            .await
+                            .unwrap();
+                    }
+                },
+                "tracked_collections" => {
+                    info!("tracked collections event received");
+                    let postgres_event =
+                    serde_json::from_str::<PostgresEvent<TrackedCollection>>(notification.payload())
+                        .unwrap();
+        
+                    for con in app_state
+                        .clone()
+                        .web_socket_connections
+                        .read()
+                        .unwrap()
+                        .iter()
+                    {
+                        con.1
+                            .send(Message(
+                                serde_json::to_string_pretty(& WebSocketEvent{channel: "tracked_collections".to_string(), data: &postgres_event}).unwrap(),
+                            ))
+                            .await
+                            .unwrap();
+                    }
+                },
+                _ => {
+                    warn!("received postgres event on channel {} without handler", notification.channel())
+                }
             }
         }
     }
@@ -218,7 +246,13 @@ async fn distribute_postgres_events(app_state: web::Data<AppState>) {
 #[derive(Serialize, Deserialize, Debug)]
 struct PostgresEvent<T> {
     action: String,
-    record: T,
+    record: T
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct WebSocketEvent<T> {
+    channel: String,
+    data: T
 }
 
 #[actix_web::main]

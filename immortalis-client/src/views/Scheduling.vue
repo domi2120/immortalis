@@ -24,6 +24,8 @@
   import { ScheduledArchival } from '@/models/scheduledArchival'
   import { Notyf } from 'notyf';
   import 'notyf/notyf.min.css';
+  import { WebSocketEvent } from '@/models/webSocketEvent';
+  import { DataChangeEvent } from '@/models/dataChangeEvent';
 
   const url: Ref<string> = ref("");
   
@@ -53,16 +55,18 @@
   onMounted(async () => {
     webSocket = new WebSocket(`ws://${window.location.host}/api/ws/`)
     webSocket.onmessage = async (x) => {
-      let data: { record: ScheduledArchival, action: "delete" | "insert" } = JSON.parse(x.data);
-
-      switch (data.action) {
-        case "insert":
-          //schedules.value = await (await fetch("/api/schedule")).json();
-          schedules.value.push(data.record);
-          break;
-        case "delete":
-          schedules.value.splice(schedules.value.findIndex(s => s.id == data.record.id), 1)
-          break;
+      let messsage: WebSocketEvent<DataChangeEvent<ScheduledArchival>> = JSON.parse(x.data);
+      switch (messsage.channel) {
+        case "scheduled_archivals":
+          switch (messsage.data.action) {
+            case "insert":
+              schedules.value.push(messsage.data.record);
+              break;
+            case "delete":
+              schedules.value.splice(schedules.value.findIndex(s => s.id == messsage.data.record.id), 1)
+              break;
+          }
+        break;
       }
     }
 
@@ -87,7 +91,6 @@
       }
     );
     response.ok ? new Notyf().success(`scheduled ${url.value}`) : new Notyf().error(`is already scheduled or archived ${url.value}`)
-    schedules.value = await (await fetch("/api/schedule")).json();
     url.value = "";
   }
 </script>

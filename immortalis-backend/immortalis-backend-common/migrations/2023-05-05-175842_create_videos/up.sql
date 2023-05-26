@@ -52,18 +52,23 @@ DECLARE
   payload TEXT;
   rec RECORD;
 BEGIN
-	if tg_op = 'INSERT' then
+	if tg_op = 'INSERT' OR TG_OP = 'UPDATE' then
       rec := NEW;
 	elsif tg_op = 'DELETE' then
       REC := OLD;
 	end if;
 
-  payload := json_build_object('action',LOWER(TG_OP),'record',row_to_json(rec));
-  PERFORM pg_notify('scheduled_archivals', payload);
+  payload := json_build_object('action',LOWER(TG_OP), 'record',row_to_json(rec));
+  PERFORM pg_notify(TG_TABLE_NAME, payload);
   RETURN NEW;
 END;
 $$ LANGUAGE 'plpgsql';
 
 CREATE OR REPLACE TRIGGER scheduled_archivals_after_delete_insert_trigger AFTER DELETE OR INSERT
        ON scheduled_archivals
+       FOR EACH ROW EXECUTE PROCEDURE notify_delete_insert();
+
+
+CREATE OR REPLACE TRIGGER scheduled_archivals_after_delete_insert_trigger AFTER DELETE OR INSERT OR UPDATE
+       ON tracked_collections
        FOR EACH ROW EXECUTE PROCEDURE notify_delete_insert();

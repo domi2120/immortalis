@@ -18,8 +18,12 @@
   </template>
   
 <script lang="ts" setup>
+  import { ScheduledArchival } from '@/models/scheduledArchival';
+  import { TrackedCollection } from '@/models/trackedCollection';
+  import { WebSocketEvent } from '@/models/webSocketEvent';
+  import { DataChangeEvent } from '@/models/dataChangeEvent';
   import { onMounted } from 'vue';
-import { onUnmounted } from 'vue';
+  import { onUnmounted } from 'vue';
   import { Ref, ref } from 'vue';
   import { watch } from 'vue';
 
@@ -47,16 +51,32 @@ import { onUnmounted } from 'vue';
   );
 
   let interval: any;
-  const schedules = ref([]);
+  const schedules: Ref<TrackedCollection[]> = ref([]);
+  let webSocket: WebSocket;
+
   onMounted(async () => {
+    webSocket = new WebSocket(`ws://${window.location.host}/api/ws/`)
+    webSocket.onmessage = async (x) => {
+      let messsage: WebSocketEvent<DataChangeEvent<TrackedCollection>> = JSON.parse(x.data);
+      switch (messsage.channel) {
+        case "tracked_collections":
+          switch (messsage.data.action) {
+            case "insert":
+              schedules.value.push(messsage.data.record);
+              break;
+            case "delete":
+              schedules.value.splice(schedules.value.findIndex(s => s.id == messsage.data.record.id), 1)
+              break;
+          }
+        break;
+      }
+    }
+
     schedules.value = await (await fetch("/api/tracked_collection")).json();
-    interval = setInterval(async () => {
-      schedules.value = await (await fetch("/api/tracked_collection")).json();
-    }, 2 * 1000);
   })
 
   onUnmounted(async () => {
-    clearInterval(interval);
+    webSocket.close();
   })
   
   async function track() {
@@ -72,7 +92,6 @@ import { onUnmounted } from 'vue';
         }
       }
     );
-    schedules.value = await (await fetch("/api/schedule")).json();
     url.value = "";
   }
 
