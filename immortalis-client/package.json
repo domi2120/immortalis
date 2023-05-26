@@ -9,6 +9,7 @@
   },
   "dependencies": {
     "@mdi/font": "7.0.96",
+    "mitt": "^3.0.0",
     "notyf": "^3.10.0",
     "pinia": "^2.0.35",
     "pretty-bytes": "^6.1.0",

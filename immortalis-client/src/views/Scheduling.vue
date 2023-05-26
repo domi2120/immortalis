@@ -26,7 +26,7 @@
   import 'notyf/notyf.min.css';
   import { WebSocketEvent } from '@/models/webSocketEvent';
   import { DataChangeEvent } from '@/models/dataChangeEvent';
-import consts from '@/consts';
+  import { emitter } from '@/eventService';
 
   const url: Ref<string> = ref("");
   
@@ -51,32 +51,27 @@ import consts from '@/consts';
     ]
   );
 
-  let webSocket: WebSocket;
   const schedules: Ref<ScheduledArchival[]> = ref([]);
   onMounted(async () => {
-    webSocket = new WebSocket(`ws://${window.location.host}/api/ws/`)
-    webSocket.onmessage = async (x) => {
-      let messsage: WebSocketEvent<DataChangeEvent<ScheduledArchival>> = JSON.parse(x.data);
-      switch (messsage.channel) {
-        case consts.WebSocketChannels.ScheduledArchivals:
-          switch (messsage.data.action) {
-            case "insert":
-              schedules.value.push(messsage.data.record);
-              break;
-            case "delete":
-              schedules.value.splice(schedules.value.findIndex(s => s.id == messsage.data.record.id), 1)
-              break;
-          }
-        break;
-      }
-    }
+    emitter.on("webSocketScheduledArchival", onWebSocketScheduledArchival);
 
     schedules.value = await (await fetch("/api/schedule")).json();
   })
 
   onUnmounted(async () => {
-    webSocket.close();
+    emitter.off("webSocketScheduledArchival", onWebSocketScheduledArchival);
   })
+
+  async function onWebSocketScheduledArchival(webSocketEvent: WebSocketEvent<DataChangeEvent<ScheduledArchival>>) {
+    switch (webSocketEvent.data.action) {
+      case "insert":
+        schedules.value.push(webSocketEvent.data.record);
+        break;
+      case "delete":
+        schedules.value.splice(schedules.value.findIndex(s => s.id == webSocketEvent.data.record.id), 1)
+        break;
+    }
+  }
   
   async function schedule() {
     let response = await fetch("/api/schedule",

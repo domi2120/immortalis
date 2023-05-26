@@ -21,10 +21,13 @@
 </template>
 
 <script setup lang="ts">
-  import { Ref, ref, onMounted } from 'vue';
+  import { Ref, ref, onMounted, onUnmounted } from 'vue';
   import { Video } from '@/models/video';
   import router from './router';
   import { useRoute } from 'vue-router';
+  import { emitter } from '@/eventService';
+  import { WebSocketEvent } from './models/webSocketEvent';
+  import consts from './consts';
 
   const drawerOpened = ref(false);
   let videos: Ref<Video[]> = ref([]);
@@ -35,12 +38,34 @@
     videos.value = await (await fetch("api/search?" + new URLSearchParams({term: `${searchText.value}`}))).json();
   }
 
+  let webSocket: WebSocket;
+
   onMounted(async () => {
     await router.isReady();
     router.afterEach(() => searchText.value = router.currentRoute.value.query.searchText?.toString() || "");
     searchText.value = router.currentRoute.value.query.searchText?.toString() || "";
+
+    webSocket = new WebSocket(`ws://${window.location.host}/api/ws/`)
+    webSocket.onmessage = async (x) => {
+      let message: WebSocketEvent<any> = JSON.parse(x.data);
+      switch (message.channel) {
+        case consts.WebSocketChannels.ScheduledArchivals:
+          emitter.emit("webSocketScheduledArchival", message);
+          break;
+        case consts.WebSocketChannels.TrackedCollections:
+          emitter.emit("webSocketTrackedCollection", message);
+          break;
+        default:
+          console.log(`[WARNING] received a message on unknown channel ${message.channel}`);
+          break;
+      }
+    };
   })
   
+onUnmounted(async () => {
+  webSocket.close();
+})
+
   
   search();
 </script>

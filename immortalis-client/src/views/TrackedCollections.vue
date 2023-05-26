@@ -18,15 +18,13 @@
   </template>
   
 <script lang="ts" setup>
-  import { ScheduledArchival } from '@/models/scheduledArchival';
   import { TrackedCollection } from '@/models/trackedCollection';
   import { WebSocketEvent } from '@/models/webSocketEvent';
   import { DataChangeEvent } from '@/models/dataChangeEvent';
   import { onMounted } from 'vue';
   import { onUnmounted } from 'vue';
   import { Ref, ref } from 'vue';
-  import { watch } from 'vue';
-import consts from '@/consts';
+  import { emitter } from '@/eventService';
 
   const url: Ref<string> = ref("");
   
@@ -51,33 +49,27 @@ import consts from '@/consts';
     ]
   );
 
-  let interval: any;
   const schedules: Ref<TrackedCollection[]> = ref([]);
-  let webSocket: WebSocket;
 
   onMounted(async () => {
-    webSocket = new WebSocket(`ws://${window.location.host}/api/ws/`)
-    webSocket.onmessage = async (x) => {
-      let messsage: WebSocketEvent<DataChangeEvent<TrackedCollection>> = JSON.parse(x.data);
-      switch (messsage.channel) {
-        case consts.WebSocketChannels.TrackedCollections:
-          switch (messsage.data.action) {
-            case "insert":
-              schedules.value.push(messsage.data.record);
-              break;
-            case "delete":
-              schedules.value.splice(schedules.value.findIndex(s => s.id == messsage.data.record.id), 1)
-              break;
-          }
-        break;
-      }
-    }
+    emitter.on("webSocketTrackedCollection", onWebSocketTrackedCollection);
 
     schedules.value = await (await fetch("/api/tracked_collection")).json();
   })
 
+  async function onWebSocketTrackedCollection (webSocketEvent: WebSocketEvent<DataChangeEvent<TrackedCollection>>) {
+    switch (webSocketEvent.data.action) {
+      case "insert":
+        schedules.value.push(webSocketEvent.data.record);
+        break;
+      case "delete":
+        schedules.value.splice(schedules.value.findIndex(s => s.id == webSocketEvent.data.record.id), 1)
+        break;
+    }
+  }
+
   onUnmounted(async () => {
-    webSocket.close();
+    emitter.off("webSocketTrackedCollection", onWebSocketTrackedCollection);
   })
   
   async function track() {
