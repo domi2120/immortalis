@@ -17,16 +17,16 @@ use diesel::{BelongingToDsl, PgTextExpressionMethods, QueryDsl, JoinOnDsl};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
-use scheduled_archivals_event_handler::ScheduledArchivalsEventHandler;
+use websocket_actor::WebSocketActor;
 use serde::{Deserialize, Serialize};
 
 use dotenvy::dotenv;
 use tracing::{info, warn};
 use uuid::Uuid;
 
-use crate::scheduled_archivals_event_handler::Message;
+use crate::websocket_actor::Message;
 pub mod request_models;
-pub mod scheduled_archivals_event_handler;
+pub mod websocket_actor;
 pub mod utilities;
 use request_models::{GetFileRequestData, ScheduleRequest, SearchQuery};
 
@@ -170,7 +170,7 @@ async fn get_file(
 struct AppState {
     db_connection_pool: Pool<AsyncPgConnection>,
     file_storage_location: String,
-    web_socket_connections: Arc<RwLock<HashMap<String, Addr<ScheduledArchivalsEventHandler>>>>,
+    web_socket_connections: Arc<RwLock<HashMap<String, Addr<WebSocketActor>>>>,
     env_var_config: Arc<EnvVarConfig>
 }
 
@@ -315,7 +315,7 @@ async fn websocket(
     app_state: web::Data<AppState>,
 ) -> Result<HttpResponse, actix_web::error::Error> {
     ws::start(
-        ScheduledArchivalsEventHandler::new(app_state.web_socket_connections.clone()),
+        WebSocketActor::new(app_state.web_socket_connections.clone()),
         &req,
         stream,
     )

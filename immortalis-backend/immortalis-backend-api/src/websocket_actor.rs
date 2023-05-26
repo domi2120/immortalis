@@ -7,18 +7,18 @@ use std::sync::{Arc, RwLock};
 use uuid::Uuid;
 
 #[derive(Clone)]
-pub struct ScheduledArchivalsEventHandler {
-    pub web_socket_connections: Arc<RwLock<HashMap<String, Addr<ScheduledArchivalsEventHandler>>>>,
+pub struct WebSocketActor {
+    pub web_socket_connections: Arc<RwLock<HashMap<String, Addr<WebSocketActor>>>>,
     id: Uuid
 }
 
-impl ScheduledArchivalsEventHandler {
-    pub fn new (web_socket_connections: Arc<RwLock<HashMap<String, Addr<ScheduledArchivalsEventHandler>>>>) -> ScheduledArchivalsEventHandler {
-        ScheduledArchivalsEventHandler { web_socket_connections: web_socket_connections, id: Uuid::new_v4() }
+impl WebSocketActor {
+    pub fn new (web_socket_connections: Arc<RwLock<HashMap<String, Addr<WebSocketActor>>>>) -> WebSocketActor {
+        WebSocketActor { web_socket_connections: web_socket_connections, id: Uuid::new_v4() }
     }
 }
 
-impl Actor for ScheduledArchivalsEventHandler {
+impl Actor for WebSocketActor {
     type Context = actix_web_actors::ws::WebsocketContext<Self>;
 
     fn started(&mut self, ctx: &mut Self::Context) {
@@ -35,7 +35,7 @@ impl Actor for ScheduledArchivalsEventHandler {
     }
 }
 
-impl Handler<Message> for ScheduledArchivalsEventHandler {
+impl Handler<Message> for WebSocketActor {
     type Result = ();
 
     fn handle(&mut self, msg: Message, ctx: &mut Self::Context) -> Self::Result {
@@ -44,7 +44,7 @@ impl Handler<Message> for ScheduledArchivalsEventHandler {
 }
 
 /// Handler for ws::Message message
-impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for ScheduledArchivalsEventHandler {
+impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WebSocketActor {
     fn handle(&mut self, msg: Result<ws::Message, ws::ProtocolError>, ctx: &mut Self::Context) {
         match msg {
             Ok(ws::Message::Ping(msg)) => ctx.pong(&msg),
