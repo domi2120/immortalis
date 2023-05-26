@@ -28,6 +28,7 @@
   import { emitter } from '@/eventService';
   import { WebSocketEvent } from './models/webSocketEvent';
   import consts from './consts';
+import { SubscriptionCallback } from 'pinia';
 
   const drawerOpened = ref(false);
   let videos: Ref<Video[]> = ref([]);
@@ -39,12 +40,22 @@
   }
 
   let webSocket: WebSocket;
+  let webSocketReconnectInterval: any; // handle to the interval
 
   onMounted(async () => {
     await router.isReady();
     router.afterEach(() => searchText.value = router.currentRoute.value.query.searchText?.toString() || "");
     searchText.value = router.currentRoute.value.query.searchText?.toString() || "";
+    
+    connectWebsocket();
+    webSocketReconnectInterval = setInterval(() => {
+      if (webSocket.readyState === webSocket.CLOSED) {
+        connectWebsocket();
+      }
+    }, 5000)
+  })
 
+  async function connectWebsocket(){
     webSocket = new WebSocket(`ws://${window.location.host}/api/ws/`)
     webSocket.onmessage = async (x) => {
       let message: WebSocketEvent<any> = JSON.parse(x.data);
@@ -60,9 +71,10 @@
           break;
       }
     };
-  })
+  }
   
 onUnmounted(async () => {
+  clearInterval(webSocketReconnectInterval);
   webSocket.close();
 })
 
