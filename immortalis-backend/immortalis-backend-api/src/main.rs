@@ -14,7 +14,7 @@ use immortalis_backend_common::database_models::{
 use immortalis_backend_common::env_var_config::EnvVarConfig;
 use immortalis_backend_common::schema::{files, scheduled_archivals, tracked_collections, videos};
 
-use diesel::{insert_into, ExpressionMethods};
+use diesel::{insert_into, ExpressionMethods, SelectableHelper};
 use diesel::{JoinOnDsl, PgTextExpressionMethods, QueryDsl};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
@@ -120,8 +120,6 @@ async fn search(query: web::Query<SearchQuery>, app_state: web::Data<AppState>) 
         results = results.filter(videos::title.ilike("%".to_string() + x + "%"))
     }
 
-    //let g = files::table.inner_join(videos.on).load::<File, Video>(&mut conn);
-    use diesel::SelectableHelper;
     let results: Vec<(Video, i64)> = results
         .inner_join(
             immortalis_backend_common::schema::files::dsl::files.on(files::id.eq(videos::file_id)),
