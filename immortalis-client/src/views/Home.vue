@@ -7,16 +7,16 @@
 </template>
 
 <script lang="ts" setup>
-  import { Ref, ref } from 'vue';
-  import { Video } from '@/models/video';
-  import VideoEntry from '@/components/VideoEntry.vue';
+import { Ref, ref } from 'vue';
+import { Video } from '@/models/video';
+import VideoEntry from '@/components/VideoEntry.vue';
 
-  let videos: Ref<Video[]> = ref([]);
+let videos: Ref<Video[]> = ref([]);
 
-  const search = async () => {    
-    videos.value = await (await fetch("api/search?" + new URLSearchParams({term: ""}))).json();
-  }
+const search = async () => {    
+  videos.value = await (await fetch("api/search?" + new URLSearchParams({term: ""}))).json();
+}
 
-  search();
+search();
 
 </script>

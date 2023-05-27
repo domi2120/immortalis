@@ -18,75 +18,75 @@
   </template>
   
 <script lang="ts" setup>
-  import { TrackedCollection } from '@/models/trackedCollection';
-  import { WebSocketEvent } from '@/models/webSocketEvent';
-  import { DataChangeEvent } from '@/models/dataChangeEvent';
-  import { onMounted } from 'vue';
-  import { onUnmounted } from 'vue';
-  import { Ref, ref } from 'vue';
-  import { emitter } from '@/eventService';
+import { TrackedCollection } from '@/models/trackedCollection';
+import { WebSocketEvent } from '@/models/webSocketEvent';
+import { DataChangeEvent } from '@/models/dataChangeEvent';
+import { onMounted } from 'vue';
+import { onUnmounted } from 'vue';
+import { Ref, ref } from 'vue';
+import { emitter } from '@/eventService';
 
-  const url: Ref<string> = ref("");
+const url: Ref<string> = ref("");
   
-  const headers = ref(
-    [
-      {
-        title: 'Url',
-        value: 'url',
-        align: 'start',
-        //sortable: 'true'
-      },
-      {
-        title: 'Started tracking at',
-        value: 'trackingStartedAt',
-        align: 'start'
-      },
-      {
-        title: 'Last Checked at',
-        value: 'lastChecked',
-        align: 'start'
-      }
-    ]
-  );
-
-  const schedules: Ref<TrackedCollection[]> = ref([]);
-
-  onMounted(async () => {
-    emitter.on("webSocketTrackedCollection", onWebSocketTrackedCollection);
-
-    schedules.value = await (await fetch("/api/tracked_collection")).json();
-  })
-
-  async function onWebSocketTrackedCollection (webSocketEvent: WebSocketEvent<DataChangeEvent<TrackedCollection>>) {
-    switch (webSocketEvent.data.action) {
-      case "insert":
-        schedules.value.push(webSocketEvent.data.record);
-        break;
-      case "delete":
-        schedules.value.splice(schedules.value.findIndex(s => s.id == webSocketEvent.data.record.id), 1)
-        break;
+const headers = ref(
+  [
+    {
+      title: 'Url',
+      value: 'url',
+      align: 'start',
+      //sortable: 'true'
+    },
+    {
+      title: 'Started tracking at',
+      value: 'trackingStartedAt',
+      align: 'start'
+    },
+    {
+      title: 'Last Checked at',
+      value: 'lastChecked',
+      align: 'start'
     }
-  }
+  ]
+);
 
-  onUnmounted(async () => {
-    emitter.off("webSocketTrackedCollection", onWebSocketTrackedCollection);
-  })
+const schedules: Ref<TrackedCollection[]> = ref([]);
+
+onMounted(async () => {
+  emitter.on("webSocketTrackedCollection", onWebSocketTrackedCollection);
+
+  schedules.value = await (await fetch("/api/tracked_collection")).json();
+})
+
+async function onWebSocketTrackedCollection (webSocketEvent: WebSocketEvent<DataChangeEvent<TrackedCollection>>) {
+  switch (webSocketEvent.data.action) {
+  case "insert":
+    schedules.value.push(webSocketEvent.data.record);
+    break;
+  case "delete":
+    schedules.value.splice(schedules.value.findIndex(s => s.id == webSocketEvent.data.record.id), 1)
+    break;
+  }
+}
+
+onUnmounted(async () => {
+  emitter.off("webSocketTrackedCollection", onWebSocketTrackedCollection);
+})
   
-  async function track() {
-    await fetch("/api/tracked_collection",
+async function track() {
+  await fetch("/api/tracked_collection",
     {
       method: "POST",
       body: JSON.stringify(
         {
           url: url.value
         }),
-        headers: {
-          "Content-Type": "application/json",
-        }
+      headers: {
+        "Content-Type": "application/json",
       }
-    );
-    url.value = "";
-  }
+    }
+  );
+  url.value = "";
+}
 
 </script>
   

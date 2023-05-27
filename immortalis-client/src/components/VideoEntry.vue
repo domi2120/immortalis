@@ -28,13 +28,13 @@ import { Ref } from 'vue';
 import prettyBytes from 'pretty-bytes';
 
 const props = defineProps<
-    {
-        video: Ref<Video>
-    }
+  {
+      video: Ref<Video>
+  }
 >();
 
 function numberToDelimetedString(x: number, delimeter: string) {
-    return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, delimeter);
+  return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, delimeter);
 }
 
 </script>

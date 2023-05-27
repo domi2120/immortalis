@@ -6,24 +6,24 @@
     </v-container>
   </template>
   
-  <script lang="ts" setup>
-    import { Ref, ref } from 'vue';
-    import { Video } from '@/models/video';
-    import VideoEntry from '@/components/VideoEntry.vue';
+<script lang="ts" setup>
+import { Ref, ref } from 'vue';
+import { Video } from '@/models/video';
+import VideoEntry from '@/components/VideoEntry.vue';
   
-    let videos: Ref<Video[]> = ref([]);
+let videos: Ref<Video[]> = ref([]);
   
-    const props = defineProps<
+const props = defineProps<
         {
             searchText: string
         }
     >();
       
-    const search = async () => {    
-      videos.value = await (await fetch("api/search?" + new URLSearchParams({term: props.searchText}))).json();
-    }
+const search = async () => {    
+  videos.value = await (await fetch("api/search?" + new URLSearchParams({term: props.searchText}))).json();
+}
   
-    search();
+search();
   
-  </script>
+</script>
   

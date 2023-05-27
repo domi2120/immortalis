@@ -21,55 +21,55 @@
 </template>
 
 <script setup lang="ts">
-  import { Ref, ref, onMounted, onUnmounted } from 'vue';
-  import { Video } from '@/models/video';
-  import router from './router';
-  import { emitter } from '@/eventService';
-  import { WebSocketEvent } from './models/webSocketEvent';
-  import consts from './consts';
+import { Ref, ref, onMounted, onUnmounted } from 'vue';
+import { Video } from '@/models/video';
+import router from './router';
+import { emitter } from '@/eventService';
+import { WebSocketEvent } from './models/webSocketEvent';
+import consts from './consts';
 
-  const drawerOpened = ref(false);
-  let videos: Ref<Video[]> = ref([]);
+const drawerOpened = ref(false);
+let videos: Ref<Video[]> = ref([]);
 
-  let searchText: Ref<string> = ref("");
+let searchText: Ref<string> = ref("");
 
-  const search = async () => {
-    videos.value = await (await fetch("api/search?" + new URLSearchParams({term: `${searchText.value}`}))).json();
-  }
+const search = async () => {
+  videos.value = await (await fetch("api/search?" + new URLSearchParams({term: `${searchText.value}`}))).json();
+}
 
-  let webSocket: WebSocket;
-  let webSocketReconnectInterval: any; // handle to the interval
+let webSocket: WebSocket;
+let webSocketReconnectInterval: any; // handle to the interval
 
-  onMounted(async () => {
-    await router.isReady();
-    router.afterEach(() => searchText.value = router.currentRoute.value.query.searchText?.toString() || "");
-    searchText.value = router.currentRoute.value.query.searchText?.toString() || "";
+onMounted(async () => {
+  await router.isReady();
+  router.afterEach(() => searchText.value = router.currentRoute.value.query.searchText?.toString() || "");
+  searchText.value = router.currentRoute.value.query.searchText?.toString() || "";
     
-    connectWebsocket();
-    webSocketReconnectInterval = setInterval(() => {
-      if (webSocket.readyState === webSocket.CLOSED) {
-        connectWebsocket();
-      }
-    }, 5000)
-  })
+  connectWebsocket();
+  webSocketReconnectInterval = setInterval(() => {
+    if (webSocket.readyState === webSocket.CLOSED) {
+      connectWebsocket();
+    }
+  }, 5000)
+})
 
-  async function connectWebsocket(){
-    webSocket = new WebSocket(`ws://${window.location.host}/api/ws/`)
-    webSocket.onmessage = async (x) => {
-      let message: WebSocketEvent<any> = JSON.parse(x.data);
-      switch (message.channel) {
-        case consts.WebSocketChannels.ScheduledArchivals:
-          emitter.emit("webSocketScheduledArchival", message);
-          break;
-        case consts.WebSocketChannels.TrackedCollections:
-          emitter.emit("webSocketTrackedCollection", message);
-          break;
-        default:
-          console.log(`[WARNING] received a message on unknown channel ${message.channel}`);
-          break;
-      }
-    };
-  }
+async function connectWebsocket(){
+  webSocket = new WebSocket(`ws://${window.location.host}/api/ws/`)
+  webSocket.onmessage = async (x) => {
+    let message: WebSocketEvent<any> = JSON.parse(x.data);
+    switch (message.channel) {
+    case consts.WebSocketChannels.ScheduledArchivals:
+      emitter.emit("webSocketScheduledArchival", message);
+      break;
+    case consts.WebSocketChannels.TrackedCollections:
+      emitter.emit("webSocketTrackedCollection", message);
+      break;
+    default:
+      console.log(`[WARNING] received a message on unknown channel ${message.channel}`);
+      break;
+    }
+  };
+}
   
 onUnmounted(async () => {
   clearInterval(webSocketReconnectInterval);
@@ -77,7 +77,7 @@ onUnmounted(async () => {
 })
 
   
-  search();
+search();
 </script>
 <style>
 </style>
