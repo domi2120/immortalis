@@ -29,7 +29,7 @@ services:
       context: immortalis-backend
       target: immortalis-backend-tracker
     env_file:
-      - "docker-compose.env"
+      - ".docker-compose.env"
 
   api:
     image: immortalis-backend-api 
@@ -41,7 +41,7 @@ services:
     ports:
       - "8080:8080"
     env_file:
-      - "docker-compose.env"
+      - ".docker-compose.env"
     volumes:
       - ./downloads:/downloads
   
@@ -53,7 +53,7 @@ services:
       context: immortalis-backend
       target: immortalis-backend-archiver
     env_file:
-      - "docker-compose.env"
+      - ".docker-compose.env"
     volumes:
       - ./downloads:/downloads
 

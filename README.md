@@ -2,25 +2,8 @@
  
 
 ## Getting Started
-* create a .env file (take a look at [.env](.env) and [.docker-compose-env](docker-compose.env))
+* create a .env file (and optionally a .docker-compose.env file). Take a look at [.env.example](.env.example) and [.docker-compose.env.example](.docker-compose.env.example)
 * run `docker compose up db pgadmin` to start postgres + pgadmin
-* run `cd immortalis-backend-common && ~/.cargo/bin/diesel migration run` to run the migrations
-* run `cd ../immortalis-client && pnpm i && pnpm run dev` to run the client (localhost:3000)
-* run `cd ../immortalis-backend-api && cargo run` to run the api (localhost:8080, proxied through client at "localhost:3000/api")
-* go to [pgadmin](http://localhost:5050/browser/) and execute the following code for some initial data
-```
-INSERT INTO public.videos(
-	title, channel, views, upload_date, archived_date, duration, thumbnail_address, original_url, status)
-	VALUES
-	('Ghost - Rats (Official Music Video)', 'Ghost', 5000000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 265, 'https://img.youtube.com/vi/C_ijc7A5oAc/maxresdefault.jpg', 'https://www.youtube.com/watch?v=C_ijc7A5oAc', 'Archived'),
-	('I Am', 'Theocrary - Topic', 380000, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 660, 'https://img.youtube.com/vi/vfc8EjDuYNw/maxresdefault.jpg', 'https://www.youtube.com/watch?v=vfc8EjDuYNw', 'Archived');
-	
-insert into public.downloads (video_id, title, value)
-select id, 'Download(1080p30)', 'Download(1080p30)'
-from public.videos;
-
-insert into public.downloads (video_id, title, value)
-select id, 'Audio Only', 'Audio Only'
-from public.videos;
-
-```
+* run `(cd immortalis-backend-common && ~/.cargo/bin/diesel migration run)` to run the migrations
+* run `(cd ./immortalis-client && pnpm i && pnpm run dev)` to run the client (localhost:3000)
+* run `./run-immortalis-backend.sh` to run the backend services ( API is proxied through client at "localhost:3000/api")
