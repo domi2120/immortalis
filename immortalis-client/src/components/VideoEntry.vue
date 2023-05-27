@@ -12,7 +12,7 @@
             <h2 >{{ props.video.value.title }}</h2>
             {{ props.video.value.channel }} <br>
             {{ numberToDelimetedString(props.video.value.views, ",") }} views · uploaded: {{ new Date(props.video.value.uploadDate).toLocaleDateString() }} · archived: {{ new Date(props.video.value.archivedDate).toLocaleDateString() }} <br>
-            <v-btn :href="'/api/file?is_thumbnail=false&file_id=' + encodeURI(props.video.value.fileId )" :disabled="props.video.value.status != 'Archived'" @click="download(video)" >Download</v-btn>
+            <v-btn :href="'/api/file?is_thumbnail=false&file_id=' + encodeURI(props.video.value.fileId )" :disabled="props.video.value.status != 'Archived'" >Download</v-btn>
             <v-btn :href="props.video.value.originalUrl" class="ma-2">Watch Original</v-btn>
             <v-chip>{{ props.video.value.status }}</v-chip>
             <v-chip>{{ prettyBytes(props.video.value.videoSize) }}</v-chip>
@@ -24,11 +24,8 @@
 <script setup lang="ts">
 
 import { Video } from '@/models/video';
-import { ref } from 'vue';
 import { Ref } from 'vue';
 import prettyBytes from 'pretty-bytes';
-
-let video: Ref<Video | {}> = ref({});
 
 const props = defineProps<
     {
@@ -38,10 +35,6 @@ const props = defineProps<
 
 function numberToDelimetedString(x: number, delimeter: string) {
     return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, delimeter);
-}
-
-async function download(video: any) {
-  // not currently in use
 }
 
 </script>

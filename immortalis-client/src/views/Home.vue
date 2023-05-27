@@ -1,6 +1,6 @@
 <template>
   <v-container class="ma-10">
-    <v-row v-for="video in videos" >
+    <v-row v-for="video in videos" v-bind:key="video.id">
       <video-entry :video=ref(video) />
     </v-row>
   </v-container>

@@ -24,11 +24,9 @@
   import { Ref, ref, onMounted, onUnmounted } from 'vue';
   import { Video } from '@/models/video';
   import router from './router';
-  import { useRoute } from 'vue-router';
   import { emitter } from '@/eventService';
   import { WebSocketEvent } from './models/webSocketEvent';
   import consts from './consts';
-import { SubscriptionCallback } from 'pinia';
 
   const drawerOpened = ref(false);
   let videos: Ref<Video[]> = ref([]);

@@ -1,6 +1,6 @@
 <template>
     <v-container class="ma-10">
-      <v-row v-for="video in videos" >
+      <v-row v-for="video in videos" v-bind:key="video.id" >
         <video-entry :video=ref(video) />
       </v-row>
     </v-container>
@@ -10,7 +10,6 @@
     import { Ref, ref } from 'vue';
     import { Video } from '@/models/video';
     import VideoEntry from '@/components/VideoEntry.vue';
-    import { watch } from 'vue';
   
     let videos: Ref<Video[]> = ref([]);
   
@@ -19,9 +18,7 @@
             searchText: string
         }
     >();
-    
-    const watchers = watch(() => props.searchText, () => search() )
-  
+      
     const search = async () => {    
       videos.value = await (await fetch("api/search?" + new URLSearchParams({term: props.searchText}))).json();
     }

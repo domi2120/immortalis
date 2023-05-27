@@ -1,4 +1,7 @@
+import { UUID } from "crypto";
+
 export interface Video {
+    id: UUID;
     title: string;
     channel: string;
     views: number;
