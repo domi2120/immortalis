@@ -1,20 +1,25 @@
 use actix::prelude::*;
 use actix::{Actor, Addr, Handler, StreamHandler};
 use actix_web_actors::ws::{self};
-use tracing::info;
 use std::collections::hash_map::HashMap;
 use std::sync::{Arc, RwLock};
+use tracing::info;
 use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct WebSocketActor {
     pub web_socket_connections: Arc<RwLock<HashMap<String, Addr<WebSocketActor>>>>,
-    id: Uuid
+    id: Uuid,
 }
 
 impl WebSocketActor {
-    pub fn new (web_socket_connections: Arc<RwLock<HashMap<String, Addr<WebSocketActor>>>>) -> WebSocketActor {
-        WebSocketActor { web_socket_connections, id: Uuid::new_v4() }
+    pub fn new(
+        web_socket_connections: Arc<RwLock<HashMap<String, Addr<WebSocketActor>>>>,
+    ) -> WebSocketActor {
+        WebSocketActor {
+            web_socket_connections,
+            id: Uuid::new_v4(),
+        }
     }
 }
 
@@ -30,7 +35,10 @@ impl Actor for WebSocketActor {
     }
 
     fn stopped(&mut self, _ctx: &mut Self::Context) {
-        self.web_socket_connections.write().unwrap().remove(&self.id.to_string());
+        self.web_socket_connections
+            .write()
+            .unwrap()
+            .remove(&self.id.to_string());
         info!("Actor stopped for id {}", self.id);
     }
 }

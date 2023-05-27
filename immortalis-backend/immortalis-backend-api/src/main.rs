@@ -8,25 +8,27 @@ use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer, Resp
 use actix_web_actors::ws::{self};
 use immortalis_backend_common::data_transfer_models::video_dto::VideoDto;
 use immortalis_backend_common::database_models::tracked_collection::TrackedCollection;
-use immortalis_backend_common::database_models::{scheduled_archival::ScheduledArchival, video::Video};
+use immortalis_backend_common::database_models::{
+    scheduled_archival::ScheduledArchival, video::Video,
+};
 use immortalis_backend_common::env_var_config::EnvVarConfig;
 use immortalis_backend_common::schema::{files, scheduled_archivals, tracked_collections, videos};
 
 use diesel::{insert_into, ExpressionMethods};
-use diesel::{PgTextExpressionMethods, QueryDsl, JoinOnDsl};
+use diesel::{JoinOnDsl, PgTextExpressionMethods, QueryDsl};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
-use websocket_actor::WebSocketActor;
 use serde::{Deserialize, Serialize};
+use websocket_actor::WebSocketActor;
 
 use dotenvy::dotenv;
 use tracing::{info, warn};
 
 use crate::websocket_actor::Message;
 pub mod request_models;
-pub mod websocket_actor;
 pub mod utilities;
+pub mod websocket_actor;
 use request_models::{GetFileRequestData, ScheduleRequest, SearchQuery};
 
 #[get("/health")]
@@ -78,12 +80,15 @@ async fn schedule(
     }
 
     if let Ok(video_url) = crate::utilities::filter_query_pairs(&schedule_request.url, vec!["v"]) {
-        
         let db_connection = &mut app_state.db_connection_pool.get().await.unwrap();
 
-        let already_exists = match videos::table.filter(videos::original_url.eq(&video_url)).first::<Video>(db_connection).await {
+        let already_exists = match videos::table
+            .filter(videos::original_url.eq(&video_url))
+            .first::<Video>(db_connection)
+            .await
+        {
             Ok(_x) => true,
-            Err(_x) => false
+            Err(_x) => false,
         };
 
         if already_exists {
@@ -107,7 +112,9 @@ async fn schedule(
 #[get("/search")]
 async fn search(query: web::Query<SearchQuery>, app_state: web::Data<AppState>) -> impl Responder {
     let mut conn = app_state.db_connection_pool.get().await.unwrap();
-    let mut results = videos::table.order(videos::archived_date.desc()).into_boxed();
+    let mut results = videos::table
+        .order(videos::archived_date.desc())
+        .into_boxed();
 
     if let Some(x) = &query.term {
         results = results.filter(videos::title.ilike("%".to_string() + x + "%"))
@@ -115,17 +122,24 @@ async fn search(query: web::Query<SearchQuery>, app_state: web::Data<AppState>) 
 
     //let g = files::table.inner_join(videos.on).load::<File, Video>(&mut conn);
     use diesel::SelectableHelper;
-    let results: Vec<(Video, i64)>  = results
-        .inner_join(immortalis_backend_common::schema::files::dsl::files.on(files::id.eq(videos::file_id)))
+    let results: Vec<(Video, i64)> = results
+        .inner_join(
+            immortalis_backend_common::schema::files::dsl::files.on(files::id.eq(videos::file_id)),
+        )
         .select((Video::as_select(), files::size))
         .load::<(Video, i64)>(&mut conn)
         .await
         .expect("Error loading posts");
 
-    HttpResponse::Ok().json(results.into_iter().map(move |f| VideoDto {
-        video: f.0,
-        video_size: f.1 
-    }).collect::<Vec<VideoDto>>())
+    HttpResponse::Ok().json(
+        results
+            .into_iter()
+            .map(move |f| VideoDto {
+                video: f.0,
+                video_size: f.1,
+            })
+            .collect::<Vec<VideoDto>>(),
+    )
 }
 
 #[get("/file")]
@@ -150,27 +164,25 @@ async fn get_file(
     ))
     .await?;
 
-    Ok(
-        response
-            .set_content_disposition(ContentDisposition {
-                disposition: actix_web::http::header::DispositionType::Attachment,
-                parameters: vec![DispositionParam::FilenameExt(ExtendedValue {
-                    value: format!("{}.{}", f.file_name, &f.file_extension)
-                        .as_bytes()
-                        .to_vec(),
-                    charset: Charset::Ext("UTF-8".to_string()),
-                    language_tag: None,
-                })],
-            })
-            .into_response(&req)
-    )
+    Ok(response
+        .set_content_disposition(ContentDisposition {
+            disposition: actix_web::http::header::DispositionType::Attachment,
+            parameters: vec![DispositionParam::FilenameExt(ExtendedValue {
+                value: format!("{}.{}", f.file_name, &f.file_extension)
+                    .as_bytes()
+                    .to_vec(),
+                charset: Charset::Ext("UTF-8".to_string()),
+                language_tag: None,
+            })],
+        })
+        .into_response(&req))
 }
 
 struct AppState {
     db_connection_pool: Pool<AsyncPgConnection>,
     file_storage_location: String,
     web_socket_connections: Arc<RwLock<HashMap<String, Addr<WebSocketActor>>>>,
-    env_var_config: Arc<EnvVarConfig>
+    env_var_config: Arc<EnvVarConfig>,
 }
 
 async fn distribute_postgres_events(app_state: web::Data<AppState>) {
@@ -193,11 +205,12 @@ async fn distribute_postgres_events(app_state: web::Data<AppState>) {
 
         while let Ok(Some(notification)) = listener.try_recv().await {
             match notification.channel() {
-                "scheduled_archivals" =>  {
-                    let postgres_event =
-                    serde_json::from_str::<PostgresEvent<ScheduledArchival>>(notification.payload())
-                        .unwrap();
-        
+                "scheduled_archivals" => {
+                    let postgres_event = serde_json::from_str::<PostgresEvent<ScheduledArchival>>(
+                        notification.payload(),
+                    )
+                    .unwrap();
+
                     for con in app_state
                         .clone()
                         .web_socket_connections
@@ -207,18 +220,23 @@ async fn distribute_postgres_events(app_state: web::Data<AppState>) {
                     {
                         con.1
                             .send(Message(
-                                serde_json::to_string_pretty(& WebSocketEvent{channel: "scheduled_archivals".to_string(), data: &postgres_event}).unwrap(),
+                                serde_json::to_string_pretty(&WebSocketEvent {
+                                    channel: "scheduled_archivals".to_string(),
+                                    data: &postgres_event,
+                                })
+                                .unwrap(),
                             ))
                             .await
                             .unwrap();
                     }
-                },
+                }
                 "tracked_collections" => {
                     info!("tracked collections event received");
-                    let postgres_event =
-                    serde_json::from_str::<PostgresEvent<TrackedCollection>>(notification.payload())
-                        .unwrap();
-        
+                    let postgres_event = serde_json::from_str::<PostgresEvent<TrackedCollection>>(
+                        notification.payload(),
+                    )
+                    .unwrap();
+
                     for con in app_state
                         .clone()
                         .web_socket_connections
@@ -228,14 +246,21 @@ async fn distribute_postgres_events(app_state: web::Data<AppState>) {
                     {
                         con.1
                             .send(Message(
-                                serde_json::to_string_pretty(& WebSocketEvent{channel: "tracked_collections".to_string(), data: &postgres_event}).unwrap(),
+                                serde_json::to_string_pretty(&WebSocketEvent {
+                                    channel: "tracked_collections".to_string(),
+                                    data: &postgres_event,
+                                })
+                                .unwrap(),
                             ))
                             .await
                             .unwrap();
                     }
-                },
+                }
                 _ => {
-                    warn!("received postgres event on channel {} without handler", notification.channel())
+                    warn!(
+                        "received postgres event on channel {} without handler",
+                        notification.channel()
+                    )
                 }
             }
         }
@@ -245,13 +270,13 @@ async fn distribute_postgres_events(app_state: web::Data<AppState>) {
 #[derive(Serialize, Deserialize, Debug)]
 struct PostgresEvent<T> {
     action: String,
-    record: T
+    record: T,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 struct WebSocketEvent<T> {
     channel: String,
-    data: T
+    data: T,
 }
 
 #[actix_web::main]
@@ -268,7 +293,7 @@ async fn main() -> std::io::Result<()> {
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
-        &env_var_config.database_url
+        &env_var_config.database_url,
     );
 
     let pool = Pool::builder(config).build().unwrap();
@@ -277,7 +302,7 @@ async fn main() -> std::io::Result<()> {
         db_connection_pool: pool.clone(),
         file_storage_location: env_var_config.file_storage_location.clone(),
         web_socket_connections: Arc::new(RwLock::new(HashMap::new())),
-        env_var_config: env_var_config.clone()
+        env_var_config: env_var_config.clone(),
     });
 
     let worker_app_state = app_state.clone();

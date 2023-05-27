@@ -30,12 +30,11 @@ async fn main() {
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
-        &env_var_config.database_url
+        &env_var_config.database_url,
     );
     let application_connection_pool = Pool::builder(config).build().unwrap();
 
-    for _ in 0..env_var_config.tracker_thread_count
-    {
+    for _ in 0..env_var_config.tracker_thread_count {
         let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
         let worker_connection_pool = application_connection_pool.clone();
         tokio::spawn(async move {
@@ -145,7 +144,13 @@ async fn track(pool: Pool<AsyncPgConnection>) {
 
                 let tracked_collection = youtube_dl_output.into_playlist().unwrap();
 
-                let archived_video_urls = HashSet::<String>::from_iter(videos::table.select(videos::original_url).load::<String>(db_connection).await.unwrap());
+                let archived_video_urls = HashSet::<String>::from_iter(
+                    videos::table
+                        .select(videos::original_url)
+                        .load::<String>(db_connection)
+                        .await
+                        .unwrap(),
+                );
 
                 if let Some(videos) = tracked_collection.entries {
                     for video in videos {
@@ -169,7 +174,10 @@ async fn track(pool: Pool<AsyncPgConnection>) {
                         }
 
                         if archived_video_urls.contains(&url) {
-                            info!("{} has already been archived and will not be scheduled again", url)
+                            info!(
+                                "{} has already been archived and will not be scheduled again",
+                                url
+                            )
                         }
 
                         insert_into(scheduled_archivals::table)

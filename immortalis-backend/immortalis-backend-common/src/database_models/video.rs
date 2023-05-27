@@ -1,11 +1,13 @@
-use crate::schema::{videos};
+use super::video_status::VideoStatus;
+use crate::database_models::file::File;
+use crate::schema::videos;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use crate::database_models::file::File;
-use super::video_status::VideoStatus;
 
 // https://kotiri.com/2018/01/31/postgresql-diesel-rust-types.html
-#[derive(Deserialize, Serialize, Identifiable, Selectable, std::fmt::Debug, Queryable, Associations)]
+#[derive(
+    Deserialize, Serialize, Identifiable, Selectable, std::fmt::Debug, Queryable, Associations,
+)]
 #[diesel(belongs_to(File))]
 #[serde(rename_all = "camelCase")]
 pub struct Video {

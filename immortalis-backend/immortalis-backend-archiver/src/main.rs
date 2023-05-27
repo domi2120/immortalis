@@ -34,31 +34,25 @@ async fn main() {
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
-        &env_var_config.database_url
+        &env_var_config.database_url,
     );
     let application_connection_pool = Pool::builder(config).build().unwrap();
 
     // spawn 4 workers
-    for _ in 0..env_var_config.archiver_thread_count
-    {
+    for _ in 0..env_var_config.archiver_thread_count {
         let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
 
         let worker_connection_pool = application_connection_pool.clone();
         let worker_env_var_config = env_var_config.clone();
-        
+
         tokio::spawn(async move {
             let task_env_var_config = worker_env_var_config.clone();
             let task_connection_pool = worker_connection_pool.clone();
             loop {
                 interval_timer.tick().await;
-                archive(
-                    task_connection_pool.clone(),
-                    task_env_var_config.clone()
-                )
-                .await;
+                archive(task_connection_pool.clone(), task_env_var_config.clone()).await;
             }
         });
-        
     }
 
     let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(50));
