@@ -12,8 +12,8 @@ use immortalis_backend_common::database_models::{scheduled_archival::ScheduledAr
 use immortalis_backend_common::env_var_config::EnvVarConfig;
 use immortalis_backend_common::schema::{files, scheduled_archivals, tracked_collections, videos};
 
-use diesel::{insert_into, ExpressionMethods, GroupedBy};
-use diesel::{BelongingToDsl, PgTextExpressionMethods, QueryDsl, JoinOnDsl};
+use diesel::{insert_into, ExpressionMethods};
+use diesel::{PgTextExpressionMethods, QueryDsl, JoinOnDsl};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
@@ -22,7 +22,6 @@ use serde::{Deserialize, Serialize};
 
 use dotenvy::dotenv;
 use tracing::{info, warn};
-use uuid::Uuid;
 
 use crate::websocket_actor::Message;
 pub mod request_models;
@@ -101,7 +100,7 @@ async fn schedule(
 
         HttpResponse::Ok()
     } else {
-        return HttpResponse::BadRequest()
+        HttpResponse::BadRequest()
     }
 }
 

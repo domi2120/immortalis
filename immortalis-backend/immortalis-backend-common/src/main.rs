@@ -10,7 +10,7 @@ fn main() {
     let env_var_config = Arc::new(envy::from_env::<EnvVarConfig>().unwrap());
 
     let database_url = &env_var_config.database_url;
-    let mut connection = PgConnection::establish(&database_url)
+    let mut connection = PgConnection::establish(database_url)
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url));
 
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!();

@@ -14,7 +14,7 @@ pub struct WebSocketActor {
 
 impl WebSocketActor {
     pub fn new (web_socket_connections: Arc<RwLock<HashMap<String, Addr<WebSocketActor>>>>) -> WebSocketActor {
-        WebSocketActor { web_socket_connections: web_socket_connections, id: Uuid::new_v4() }
+        WebSocketActor { web_socket_connections, id: Uuid::new_v4() }
     }
 }
 
@@ -29,7 +29,7 @@ impl Actor for WebSocketActor {
             .insert(self.id.to_string(), ctx.address());
     }
 
-    fn stopped(&mut self, ctx: &mut Self::Context) {
+    fn stopped(&mut self, _ctx: &mut Self::Context) {
         self.web_socket_connections.write().unwrap().remove(&self.id.to_string());
         info!("Actor stopped for id {}", self.id);
     }

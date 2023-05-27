@@ -114,7 +114,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
             let thumbnail_address = yt_dl_video.thumbnail.unwrap();
             let thumbnail_id = uuid::Uuid::new_v4();
             let mut thumbnail_extension = thumbnail_address.split('.').last().unwrap();
-            thumbnail_extension = &thumbnail_extension[0..thumbnail_extension.find("?").unwrap_or(thumbnail_extension.len())]; // trim params that may follow the extension
+            thumbnail_extension = &thumbnail_extension[0..thumbnail_extension.find('?').unwrap_or(thumbnail_extension.len())]; // trim params that may follow the extension
 
             fs::write(env_var_config.file_storage_location.clone() + &thumbnail_id.to_string() + "." + thumbnail_extension, &resp).await.unwrap();
 
@@ -183,7 +183,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
 
             // insert file for video
             insert_into(files::table)
-                .values(File {id: video.file_id, file_name: video.title.to_string(), file_extension: "mkv".to_string(), size: file_size as i64})
+                .values(File {id: video.file_id, file_name: video.title.to_string(), file_extension: "mkv".to_string(), size: file_size})
                 .execute(db_connection)
                 .await
                 .unwrap();
