@@ -40,7 +40,7 @@ async fn main() {
     );
     let application_connection_pool = Pool::builder(config).build().unwrap();
 
-    // spawn 4 workers
+    // spawn workers equal to archiver_thread_count
     for _ in 0..env_var_config.archiver_thread_count {
         let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
 

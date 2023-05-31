@@ -16,6 +16,7 @@ use immortalis_backend_common::schema::{scheduled_archivals, tracked_collections
 use serde_json::Value;
 use tracing::info;
 use youtube_dl::{Playlist, YoutubeDlOutput};
+pub mod utilities;
 
 #[tokio::main]
 async fn main() {
@@ -156,12 +157,7 @@ async fn track(pool: Pool<AsyncPgConnection>) {
                     for video in videos {
                         let url = video.webpage_url.unwrap();
 
-                        if url.ends_with("videos")
-                            || url.ends_with("streams")
-                            || url.ends_with("shorts")
-                            || url.ends_with("videos/")
-                            || url.ends_with("streams/")
-                            || url.ends_with("shorts/")
+                        if utilities::is_youtube_video_collection(&url)
                         {
                             insert_into(tracked_collections::table)
                                 .values(tracked_collections::url.eq(&url))
