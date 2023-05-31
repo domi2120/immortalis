@@ -3,12 +3,15 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "run-backend": "docker compose up db pgadmin -d && cd immortalis-backend && (trap 'kill 0' SIGINT;(cargo run --bin immortalis-backend-api) & (cargo run --bin immortalis-backend-archiver) & (cargo run --bin immortalis-backend-tracker) )",
-    "run-backend-release": "docker compose up db pgadmin -d && cd immortalis-backend && (trap 'kill 0' SIGINT;(cargo run --release --bin immortalis-backend-api) & (cargo run  --release --bin immortalis-backend-archiver) & (cargo run --release --bin immortalis-backend-tracker) )",
+    "start-backend": "docker compose up db pgadmin -d && cd immortalis-backend && (trap 'kill 0' SIGINT;(cargo run --bin immortalis-backend-api) & (cargo run --bin immortalis-backend-archiver) & (cargo run --bin immortalis-backend-tracker) )",
+    "start-backend-release": "docker compose up db pgadmin -d && cd immortalis-backend && (trap 'kill 0' SIGINT;(cargo run --release --bin immortalis-backend-api) & (cargo run  --release --bin immortalis-backend-archiver) & (cargo run --release --bin immortalis-backend-tracker) )",
     "redo-migrations": "cd immortalis-backend/immortalis-backend-common && ~/.cargo/bin/diesel migration redo -n 100",
     "generate-about-files": "( cd immortalis-client && pnpm licenses ls --long > about.txt) & ( cd immortalis-backend && cargo about generate --workspace  ./about.hbs > about.html )",
-    "run-client": "cd immortalis-client && pnpm run dev",
-    "run-all": "(trap 'kill 0' SIGINT; (pnpm --silent run run-client & pnpm --silent run run-backend) ) "
+    "start-client": "cd immortalis-client && pnpm run dev",
+    "start-all": "(trap 'kill 0' SIGINT; (pnpm --silent run run-client & pnpm --silent run run-backend) ) ",
+    "rustfmt": "(cd immortalis-backend && cargo fmt)",
+    "clippy": "(cd immortalis-backend && cargo clippy)",
+    "clippy-fix": "(cd immortalis-backend && cargo clippy --fix)"
   },
   "keywords": [],
   "author": "",
