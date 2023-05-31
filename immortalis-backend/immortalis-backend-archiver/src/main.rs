@@ -33,7 +33,9 @@ async fn main() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    fs::create_dir_all(env_var_config.file_storage_location.clone()).await.expect("could not create file_storage_location");
+    fs::create_dir_all(env_var_config.file_storage_location.clone())
+        .await
+        .expect("could not create file_storage_location");
 
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
         &env_var_config.database_url,

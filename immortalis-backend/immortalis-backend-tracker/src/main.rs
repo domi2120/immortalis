@@ -157,8 +157,7 @@ async fn track(pool: Pool<AsyncPgConnection>) {
                     for video in videos {
                         let url = video.webpage_url.unwrap();
 
-                        if utilities::is_youtube_video_collection(&url)
-                        {
+                        if utilities::is_youtube_video_collection(&url) {
                             insert_into(tracked_collections::table)
                                 .values(tracked_collections::url.eq(&url))
                                 .on_conflict_do_nothing()
