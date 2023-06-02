@@ -7,6 +7,7 @@ pub struct EnvVarConfig {
     pub temp_file_storage_location: String,
     pub skip_download: bool,
     pub archiver_thread_count: u16,
+    pub archiver_archiving_timeout_seconds: i64,
     pub tracker_thread_count: u16,
     pub use_ipv6: bool,
 }
