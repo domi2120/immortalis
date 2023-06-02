@@ -142,9 +142,9 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
             None => 0,
         };
 
-        let resp = reqwest::get(yt_dl_video.thumbnail.clone().unwrap()).await.unwrap().bytes().await.unwrap();
-
         let thumbnail_address = yt_dl_video.thumbnail.unwrap();
+        let resp = reqwest::get(&thumbnail_address).await.unwrap().bytes().await.unwrap();
+
         let thumbnail_id = uuid::Uuid::new_v4();
         let mut thumbnail_extension = thumbnail_address.split('.').last().unwrap();
         thumbnail_extension = &thumbnail_extension[0..thumbnail_extension.find('?').unwrap_or(thumbnail_extension.len())]; // trim params that may follow the extension
@@ -218,7 +218,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
                 .execute(db_connection)
                 .await
                 .unwrap();
-            return //Ok(())
+            return
         }
 
         let video_duration = YoutubeDl::new(&scheduled_archival.url)
