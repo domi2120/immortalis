@@ -4,7 +4,7 @@ use async_process::Command;
 use chrono::Duration;
 use diesel::QueryDsl;
 use diesel::{delete, insert_into, update, ExpressionMethods, OptionalExtension};
-use diesel_async::pooled_connection::deadpool::Pool;
+use diesel_async::pooled_connection::deadpool::{Pool, self};
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
@@ -65,9 +65,9 @@ async fn main() {
     }
 }
 
-/// dequeues a ScheduledArchival
-async fn dequeue(pool: &Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig>) -> Result<Option<ScheduledArchival>, diesel::result::Error> {
-    let db_connection = &mut pool.get().await.unwrap();
+/// dequeues a ScheduledArchival. The Entry will become available again once the processing_timeout has passed, if it hasn't been deleted by then
+async fn dequeue(db_connection: &mut deadpool::Object<AsyncPgConnection>, processing_timeout_seconds: i64) -> Result<Option<ScheduledArchival>, diesel::result::Error> {
+    
     db_connection.transaction::<Option<ScheduledArchival>, diesel::result::Error ,_>(|db_connection| async move {
 
         let result = scheduled_archivals::table
@@ -80,22 +80,35 @@ async fn dequeue(pool: &Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfi
             .optional()
             .unwrap();
 
+        // set not_before to now + timeout. This prevents other processes from trying to preform it as well and allows retry in case this process crashes
         update(scheduled_archivals::table)
             .set(scheduled_archivals::not_before.eq(chrono::Utc::now()
             .naive_utc()
-            .checked_add_signed(Duration::seconds(env_var_config.archiver_archiving_timeout_seconds))
+            .checked_add_signed(Duration::seconds(processing_timeout_seconds))
             .unwrap()))
             .execute(db_connection)
             .await
             .unwrap();
         Ok(result)
-    }.scope_boxed()).await
+    }.scope_boxed())
+    .await
+}
+
+fn date_string_ymd_to_naive_date_time(upload_date: &str) -> chrono::NaiveDateTime {
+    chrono::NaiveDateTime::new(
+        chrono::NaiveDate::from_ymd_opt(
+            upload_date[0..=3].parse::<i32>().unwrap(),
+            upload_date[4..=5].parse::<u32>().unwrap(),
+            upload_date[6..=7].parse::<u32>().unwrap(),
+        )
+        .unwrap(),
+        chrono::NaiveTime::from_num_seconds_from_midnight_opt(0, 0).unwrap())
 }
 
 async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig>) {
     let db_connection = &mut pool.get().await.unwrap();
 
-    let scheduled_archival = match dequeue(&pool, env_var_config.clone()).await {
+    let scheduled_archival = match dequeue(db_connection, env_var_config.archiver_archiving_timeout_seconds).await {
         Ok(x) =>  {
             match x {
                 Some(scheduled_archival) => {
@@ -124,7 +137,6 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
     if let Ok(video) = yt_video_result {
         let yt_dl_video = video.into_single_video().unwrap();
 
-        let upload_date = yt_dl_video.upload_date.unwrap();
         let video_duration = match yt_dl_video.duration {
             Some(x) => i32::try_from(x.as_i64().unwrap()).unwrap(),
             None => 0,
@@ -144,15 +156,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
             title: yt_dl_video.title,
             channel: yt_dl_video.channel.unwrap(),
             views: yt_dl_video.view_count.unwrap(),
-            upload_date: chrono::NaiveDateTime::new(
-                chrono::NaiveDate::from_ymd_opt(
-                    upload_date[0..=3].parse::<i32>().unwrap(),
-                    upload_date[4..=5].parse::<u32>().unwrap(),
-                    upload_date[6..=7].parse::<u32>().unwrap(),
-                )
-                .unwrap(),
-                chrono::NaiveTime::from_num_seconds_from_midnight_opt(0, 0).unwrap(),
-            ),
+            upload_date: date_string_ymd_to_naive_date_time(&yt_dl_video.upload_date.unwrap()),
             archived_date: chrono::Utc::now().naive_utc(),
             duration: video_duration,
             thumbnail_address: thumbnail_address.clone(),
