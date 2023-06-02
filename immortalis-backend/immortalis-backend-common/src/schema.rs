@@ -45,7 +45,6 @@ diesel::table! {
         upload_date -> Timestamp,
         archived_date -> Timestamp,
         duration -> Int4,
-        thumbnail_address -> Varchar,
         original_url -> Varchar,
         status -> VideoStatus,
         file_id -> Uuid,

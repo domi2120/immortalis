@@ -15,7 +15,6 @@ CREATE TABLE videos (
   upload_date timestamp without time zone NOT NULL,
   archived_date timestamp without time zone NOT NULL,
   duration int NOT NULL,
-  thumbnail_address varchar NOT NULL,
   original_url varchar NOT NULL UNIQUE,
   status video_status NOT NULL,
   file_id UUID NOT NULL,

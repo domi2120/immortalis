@@ -159,7 +159,6 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
             upload_date: date_string_ymd_to_naive_date_time(&yt_dl_video.upload_date.unwrap()),
             archived_date: chrono::Utc::now().naive_utc(),
             duration: video_duration,
-            thumbnail_address: thumbnail_address.clone(),
             original_url: scheduled_archival.url.clone(),
             status:
                 immortalis_backend_common::database_models::video_status::VideoStatus::BeingArchived,

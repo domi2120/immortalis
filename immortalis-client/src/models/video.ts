@@ -8,7 +8,6 @@ export interface Video {
     uploadDate: Date;
     archivedDate: Date;
     duration: number;
-    thumbnailAddress: string;
     videoSize: number;
     originalUrl: string;
     status: string;
