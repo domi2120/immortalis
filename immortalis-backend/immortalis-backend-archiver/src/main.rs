@@ -65,46 +65,6 @@ async fn main() {
     }
 }
 
-/// dequeues a ScheduledArchival. The Entry will become available again once the processing_timeout has passed, if it hasn't been deleted by then
-async fn dequeue(db_connection: &mut deadpool::Object<AsyncPgConnection>, processing_timeout_seconds: i64) -> Result<Option<ScheduledArchival>, diesel::result::Error> {
-    
-    db_connection.transaction::<Option<ScheduledArchival>, diesel::result::Error ,_>(|db_connection| async move {
-
-        let result = scheduled_archivals::table
-            .limit(1)
-            .filter(scheduled_archivals::not_before.lt(chrono::Utc::now().naive_utc()))
-            .for_update()
-            .skip_locked()
-            .first::<ScheduledArchival>(db_connection)
-            .await
-            .optional()
-            .unwrap();
-
-        // set not_before to now + timeout. This prevents other processes from trying to preform it as well and allows retry in case this process crashes
-        update(scheduled_archivals::table)
-            .set(scheduled_archivals::not_before.eq(chrono::Utc::now()
-            .naive_utc()
-            .checked_add_signed(Duration::seconds(processing_timeout_seconds))
-            .unwrap()))
-            .execute(db_connection)
-            .await
-            .unwrap();
-        Ok(result)
-    }.scope_boxed())
-    .await
-}
-
-fn date_string_ymd_to_naive_date_time(upload_date: &str) -> chrono::NaiveDateTime {
-    chrono::NaiveDateTime::new(
-        chrono::NaiveDate::from_ymd_opt(
-            upload_date[0..=3].parse::<i32>().unwrap(),
-            upload_date[4..=5].parse::<u32>().unwrap(),
-            upload_date[6..=7].parse::<u32>().unwrap(),
-        )
-        .unwrap(),
-        chrono::NaiveTime::from_num_seconds_from_midnight_opt(0, 0).unwrap())
-}
-
 async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig>) {
     let db_connection = &mut pool.get().await.unwrap();
 
@@ -142,14 +102,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
             None => 0,
         };
 
-        let thumbnail_address = yt_dl_video.thumbnail.unwrap();
-        let resp = reqwest::get(&thumbnail_address).await.unwrap().bytes().await.unwrap();
-
-        let thumbnail_id = uuid::Uuid::new_v4();
-        let mut thumbnail_extension = thumbnail_address.split('.').last().unwrap();
-        thumbnail_extension = &thumbnail_extension[0..thumbnail_extension.find('?').unwrap_or(thumbnail_extension.len())]; // trim params that may follow the extension
-
-        fs::write(env_var_config.file_storage_location.clone() + &thumbnail_id.to_string() + "." + thumbnail_extension, &resp).await.unwrap();
+        let (thumbnail_id, thumbnail_extension, thumbnail_size) = download_image(&yt_dl_video.thumbnail.unwrap(), &env_var_config.file_storage_location).await;
 
         let file_id = uuid::Uuid::new_v4();
         let video = InsertableVideo {
@@ -168,7 +121,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
 
         // insert file for thumbnail
         insert_into(files::table)
-            .values(File {id: thumbnail_id, file_name: video.title.to_string(), file_extension: thumbnail_extension.to_string(), size: resp.len() as i64})
+            .values(File {id: thumbnail_id, file_name: video.title.to_string(), file_extension: thumbnail_extension.to_string(), size: thumbnail_size as i64})
             .execute(db_connection)
             .await
             .unwrap();
@@ -285,4 +238,56 @@ async fn download_video(url: &str, temp_file_storage_location: &str, file_id: &u
 
     cmd.await.unwrap();
     file_name
+}
+
+/// dequeues a ScheduledArchival. The Entry will become available again once the processing_timeout has passed, if it hasn't been deleted by then
+async fn dequeue(db_connection: &mut deadpool::Object<AsyncPgConnection>, processing_timeout_seconds: i64) -> Result<Option<ScheduledArchival>, diesel::result::Error> {
+    
+    db_connection.transaction::<Option<ScheduledArchival>, diesel::result::Error ,_>(|db_connection| async move {
+
+        let result = scheduled_archivals::table
+            .limit(1)
+            .filter(scheduled_archivals::not_before.lt(chrono::Utc::now().naive_utc()))
+            .for_update()
+            .skip_locked()
+            .first::<ScheduledArchival>(db_connection)
+            .await
+            .optional()
+            .unwrap();
+
+        // set not_before to now + timeout. This prevents other processes from trying to preform it as well and allows retry in case this process crashes
+        update(scheduled_archivals::table)
+            .set(scheduled_archivals::not_before.eq(chrono::Utc::now()
+            .naive_utc()
+            .checked_add_signed(Duration::seconds(processing_timeout_seconds))
+            .unwrap()))
+            .execute(db_connection)
+            .await
+            .unwrap();
+        Ok(result)
+    }.scope_boxed())
+    .await
+}
+
+/// creates a NaiveDateTime from a yyyy.mm.dd string
+fn date_string_ymd_to_naive_date_time(upload_date: &str) -> chrono::NaiveDateTime {
+    chrono::NaiveDateTime::new(
+        chrono::NaiveDate::from_ymd_opt(
+            upload_date[0..=3].parse::<i32>().unwrap(),
+            upload_date[4..=5].parse::<u32>().unwrap(),
+            upload_date[6..=7].parse::<u32>().unwrap(),
+        )
+        .unwrap(),
+        chrono::NaiveTime::from_num_seconds_from_midnight_opt(0, 0).unwrap())
+}
+
+/// trims query params and downloads the image at the specified url. The image is saved with a Uuid which is returned along with the extension and the file size
+async fn download_image(url: &str, file_storage_location: &str) -> (uuid::Uuid, String, usize) {
+    let resp = reqwest::get(url).await.unwrap().bytes().await.unwrap();
+    let thumbnail_id = uuid::Uuid::new_v4();
+    let mut thumbnail_extension = url.split('.').last().unwrap();
+    thumbnail_extension = &thumbnail_extension[0..thumbnail_extension.find('?').unwrap_or(thumbnail_extension.len())]; // trim params that may follow the extension
+
+    fs::write(file_storage_location.to_string() + &thumbnail_id.to_string() + "." + thumbnail_extension, &resp).await.unwrap();
+    (thumbnail_id, thumbnail_extension.into(), resp.len())
 }
