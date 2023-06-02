@@ -190,27 +190,9 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
         // if SKIP_DOWNLOAD is set, we skip the download
         if !env_var_config.skip_download
         {
-            let cmd = Command::new("yt-dlp")
-                .arg(&scheduled_archival.url)
-                .arg("-o")
-                .arg(env_var_config.temp_file_storage_location.to_string() + file_id.to_string().as_str() + ".%(ext)s")
-                .arg("--embed-thumbnail") // webm doesnt support embedded thumbnails, so we should get .mkv files
-                .arg("--embed-metadata")
-                .arg("--embed-chapters")
-                .arg("--embed-info-json")
-                .arg("--embed-subs")
-                .arg("--wait-for-video")
-                .arg("60")
-                .arg("--live-from-start")
-                .arg("--print")
-                .arg(env_var_config.file_storage_location.to_string() + "%(title)s",
-                )
-                .arg("--no-simulate")
-                .output();
+            let temp_file_name = download_video(&scheduled_archival.url, &env_var_config.temp_file_storage_location, &file_id)
+            .await;
 
-            cmd.await.unwrap();
-
-            let temp_file_name = env_var_config.temp_file_storage_location.to_string() + file_id.to_string().as_str() + ".mkv";
             file_size = fs::File::open(&temp_file_name).await.unwrap().metadata().await.unwrap().len() as i64;
             // move it from temp storage to longtime storage. This may later be replaced by for example an external S3 or similar
             fs::rename(&temp_file_name, env_var_config.file_storage_location.to_string() + file_id.to_string().as_str() + ".mkv").await.unwrap();
@@ -278,4 +260,26 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
             yt_video_result, scheduled_archival.url
         );
     }
+}
+
+/// returns the full path of the file
+async fn download_video(url: &str, temp_file_storage_location: &str, file_id: &uuid::Uuid) -> String {
+    let file_name = temp_file_storage_location.to_string() + file_id.to_string().as_str() + ".mkv";
+    let cmd = Command::new("yt-dlp")
+                .arg(url)
+                .arg("-o")
+                .arg(temp_file_storage_location.to_string() + file_id.to_string().as_str() + ".mkv")
+                .arg("--embed-thumbnail") // webm doesnt support embedded thumbnails, so we should get .mkv files
+                .arg("--embed-metadata")
+                .arg("--embed-chapters")
+                .arg("--embed-info-json")
+                .arg("--embed-subs")
+                .arg("--wait-for-video")
+                .arg("60")
+                .arg("--live-from-start")
+                .arg("--no-simulate")
+                .output();
+
+    cmd.await.unwrap();
+    file_name
 }
