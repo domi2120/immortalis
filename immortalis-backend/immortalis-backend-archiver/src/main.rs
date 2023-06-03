@@ -147,8 +147,8 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
         .await
         .unwrap();
 
-    // if SKIP_DOWNLOAD is true, we skip the download
-    if !env_var_config.skip_download
+    // if simulate_download is false, we perform the actual download, otherwise we wait for simulated_download_duration_seconds
+    if !env_var_config.simulate_download
     {
         let temp_file_name = download_video(&scheduled_archival.url, &env_var_config.temp_file_storage_location, &file_id)
         .await;
@@ -156,6 +156,8 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
         file_size = fs::File::open(&temp_file_name).await.unwrap().metadata().await.unwrap().len() as i64;
         // move it from temp storage to longtime storage. This may later be replaced by for example an external S3 or similar
         fs::rename(&temp_file_name, env_var_config.file_storage_location.to_string() + file_id.to_string().as_str() + ".mkv").await.unwrap();
+    } else {
+        tokio::time::sleep(tokio::time::Duration::from_secs(env_var_config.simulated_download_duration_seconds)).await;
     }
 
     // update video file size after download
@@ -166,9 +168,8 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
         .await
         .unwrap();
 
-    //tokio::time::sleep(tokio::time::Duration::from_secs(15)).await; //placeholder for actual download
     // if duration is 0 (video), we're done. If it isnt (livestream), we need to reload the metadata and update the duration
-    if video.duration != 0 || env_var_config.skip_download {
+    if video.duration != 0 || env_var_config.simulate_download {
         update(videos::table)
             .set(videos::status.eq(VideoStatus::Archived))
             .execute(db_connection)
