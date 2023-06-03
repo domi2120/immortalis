@@ -77,16 +77,22 @@ async fn dequeue(db_connection: &mut deadpool::Object<AsyncPgConnection>, proces
             .optional()
             .unwrap();
 
-        // set not_before to now + timeout. This prevents other processes from trying to preform it as well and allows retry in case this process crashes
-        update(tracked_collections::table)
+        if let Some(entry) = result {
+
+            // set not_before to now + timeout. This prevents other processes from trying to preform it as well and allows retry in case this process crashes
+            update(tracked_collections::table)
             .set(tracked_collections::last_checked.eq(chrono::Utc::now()
-            .naive_utc()
-            .checked_add_signed(Duration::seconds(processing_timeout_seconds))
-            .unwrap()))
+                .naive_utc()
+                .checked_add_signed(Duration::seconds(processing_timeout_seconds))
+                .unwrap()))
+            .filter(tracked_collections::id.eq(entry.id))
             .execute(db_connection)
             .await
             .unwrap();
-        Ok(result)
+            Ok(Some(entry))
+        } else {
+            Ok(None)
+        }
     }.scope_boxed())
     .await
 }
