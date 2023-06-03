@@ -9,6 +9,7 @@ pub struct EnvVarConfig {
     pub simulated_download_duration_seconds: u64,
     pub archiver_thread_count: u16,
     pub archiver_archiving_timeout_seconds: i64,
+    pub archiver_error_backoff_seconds: i64,
     pub tracker_thread_count: u16,
     pub use_ipv6: bool,
 }

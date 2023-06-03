@@ -102,7 +102,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
             .set(
                 scheduled_archivals::not_before.eq(chrono::Utc::now()
                     .naive_utc()
-                    .checked_add_signed(Duration::minutes(10))
+                    .checked_add_signed(Duration::minutes(env_var_config.archiver_error_backoff_seconds))
                     .unwrap()),
             )
             .execute(db_connection)
