@@ -178,13 +178,19 @@ async fn track(pool: Pool<AsyncPgConnection>) {
 
     let tracked_collection = youtube_dl_output.into_playlist().unwrap();
 
-    let archived_video_urls = HashSet::<String>::from_iter(
-        videos::table
-            .select(videos::original_url)
-            .load::<String>(db_connection)
-            .await
-            .unwrap(),
-    );
+    let mut archived_or_scheduled_video_urls = videos::table
+        .select(videos::original_url)
+        .load::<String>(db_connection)
+        .await
+        .unwrap();
+
+    let scheduled_video_urls = scheduled_archivals::table.select(scheduled_archivals::url).load::<String>(db_connection)
+        .await
+        .unwrap();
+
+    archived_or_scheduled_video_urls.extend(scheduled_video_urls);
+
+    let archived_or_scheduled_video_urls = HashSet::<String>::from_iter(archived_or_scheduled_video_urls);
 
     if let Some(videos) = tracked_collection.entries {
         for video in videos {
@@ -201,9 +207,9 @@ async fn track(pool: Pool<AsyncPgConnection>) {
                 continue;
             }
 
-            if archived_video_urls.contains(&url) {
+            if archived_or_scheduled_video_urls.contains(&url) {
                 info!(
-                    "{} has already been archived and will not be scheduled again",
+                    "{} has already been archived or is scheduled for archival and will not be scheduled again",
                     url
                 )
             }
