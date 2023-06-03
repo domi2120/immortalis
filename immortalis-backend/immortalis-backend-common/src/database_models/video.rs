@@ -1,9 +1,10 @@
 use super::video_status::VideoStatus;
 use crate::database_models::file::File;
 use crate::schema::videos;
-use chrono::Utc;
+use chrono::{Utc, NaiveTime, NaiveDate, NaiveDateTime, DateTime};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
+
 // https://kotiri.com/2018/01/31/postgresql-diesel-rust-types.html
 #[derive(
     Deserialize, Serialize, Identifiable, Selectable, std::fmt::Debug, Queryable, Associations,
@@ -15,8 +16,8 @@ pub struct Video {
     pub title: String,
     pub channel: String,
     pub views: i64,
-    pub upload_date: chrono::DateTime<Utc>,
-    pub archived_date: chrono::DateTime<Utc>,
+    pub upload_date: DateTime<Utc>,
+    pub archived_date: DateTime<Utc>,
     pub duration: i32,
     pub original_url: String,
     pub status: VideoStatus,
@@ -30,8 +31,8 @@ pub struct InsertableVideo {
     pub title: String,
     pub channel: String,
     pub views: i64,
-    pub upload_date: chrono::DateTime<Utc>,
-    pub archived_date: chrono::DateTime<Utc>,
+    pub upload_date: DateTime<Utc>,
+    pub archived_date: DateTime<Utc>,
     pub duration: i32,
     pub original_url: String,
     pub status: VideoStatus,
@@ -46,8 +47,8 @@ impl InsertableVideo {
             title: single_video.title,
             channel: single_video.channel.unwrap(),
             views: single_video.view_count.unwrap(),
-            upload_date: chrono::DateTime::parse_from_str(&single_video.upload_date.unwrap(), "yyyymmdd").unwrap_or_default().into(),
-            archived_date: chrono::Utc::now(), 
+            upload_date: DateTime::from_utc(NaiveDateTime::new(NaiveDate::parse_from_str(&single_video.upload_date.unwrap(), "%Y%m%d").unwrap(), NaiveTime::default()), Utc),
+            archived_date: Utc::now(), 
             duration: single_video.duration.unwrap().as_i64().unwrap() as i32,
             original_url: single_video.webpage_url.unwrap(),
             status,
