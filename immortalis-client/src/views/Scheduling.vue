@@ -30,8 +30,7 @@ import { onMounted } from 'vue';
 import { onUnmounted } from 'vue';
 import { Ref, ref } from 'vue';
 import { ScheduledArchival } from '@/models/scheduledArchival'
-import { Notyf } from 'notyf';
-import 'notyf/notyf.min.css';
+import Notyf from '@/notification';
 import { WebSocketEvent } from '@/models/webSocketEvent';
 import { DataChangeEvent } from '@/models/dataChangeEvent';
 import { emitter } from '@/eventService';
@@ -64,8 +63,11 @@ const headers = ref(
 const schedules: Ref<ScheduledArchival[]> = ref([]);
 onMounted(async () => {
   emitter.on("webSocketScheduledArchival", onWebSocketScheduledArchival);
-
-  schedules.value = await (await fetch("/api/schedule")).json();
+  try {
+    schedules.value = await (await fetch("/api/schedule")).json();
+  } catch (e) {
+    new Notyf().error("Could not reach Server");
+  }
 })
 
 onUnmounted(async () => {

@@ -33,6 +33,7 @@ import { onMounted } from 'vue';
 import { onUnmounted } from 'vue';
 import { Ref, ref } from 'vue';
 import { emitter } from '@/eventService';
+import { Notyf } from 'notyf';
 
 const url: Ref<string> = ref("");
   
@@ -64,8 +65,11 @@ const schedules: Ref<TrackedCollection[]> = ref([]);
 
 onMounted(async () => {
   emitter.on("webSocketTrackedCollection", onWebSocketTrackedCollection);
-
-  schedules.value = await (await fetch("/api/tracked_collection")).json();
+  try {
+    schedules.value = await (await fetch("/api/tracked_collection")).json();
+  } catch (e) {
+    new Notyf().error("Could not reach Server");
+  }
 })
 
 async function onWebSocketTrackedCollection (webSocketEvent: WebSocketEvent<DataChangeEvent<TrackedCollection>>) {
