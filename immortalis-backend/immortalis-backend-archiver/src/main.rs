@@ -44,7 +44,6 @@ async fn main() {
 
     // spawn workers equal to archiver_thread_count
     for _ in 0..env_var_config.archiver_thread_count {
-        let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
 
         let worker_connection_pool = application_connection_pool.clone();
         let worker_env_var_config = env_var_config.clone();
@@ -53,8 +52,9 @@ async fn main() {
             let task_env_var_config = worker_env_var_config.clone();
             let task_connection_pool = worker_connection_pool.clone();
             loop {
-                interval_timer.tick().await;
-                archive(task_connection_pool.clone(), task_env_var_config.clone()).await;
+                if !archive(task_connection_pool.clone(), task_env_var_config.clone()).await {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await; // if nothing was archived, wait for 5 sec
+                }
             }
         });
     }
@@ -65,7 +65,8 @@ async fn main() {
     }
 }
 
-async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig>) {
+/// returns true if a video has been archived, returns false if there were no schedules or an error occured
+async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig>) -> bool {
     let db_connection = &mut pool.get().await.unwrap();
 
     let scheduled_archival = match dequeue(db_connection, env_var_config.archiver_archiving_timeout_seconds).await {
@@ -83,13 +84,13 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
                 },
                 None => {
                     info!("No ScheduledArchivals found");
-                    return;
+                    return false;
                 }
             }
         },
         Err(x) => {
             error!("Failed to Dequeue ScheduledArchival, encountered error {}", x);
-            return;
+            return false;
         },
     };
 
@@ -112,7 +113,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
             "Received error {:#?}. Video {} will be retried in 10 minutes",
             yt_video_result, scheduled_archival.url
         );
-        return;
+        return false;
     }
 
     let yt_dl_video = yt_video_result.unwrap().into_single_video().unwrap();
@@ -182,7 +183,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
             .execute(db_connection)
             .await
             .unwrap();
-        return
+        return true;
     }
     
     let video_duration = YoutubeDl::new(&scheduled_archival.url)
@@ -211,6 +212,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
         .execute(db_connection)
         .await
         .unwrap();
+    true
 }
 
 /// returns the full path of the file
