@@ -1,7 +1,7 @@
 use crate::schema::tracked_collections;
+use chrono::Utc;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
-use chrono::Utc;
 
 #[derive(Deserialize, Serialize, std::fmt::Debug, Queryable, Identifiable, Selectable)]
 #[serde(rename_all(serialize = "camelCase"))]

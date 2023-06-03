@@ -1,7 +1,7 @@
 use super::video_status::VideoStatus;
 use crate::database_models::file::File;
 use crate::schema::videos;
-use chrono::{Utc, NaiveTime, NaiveDate, NaiveDateTime, DateTime};
+use chrono::{DateTime, NaiveDate, NaiveDateTime, NaiveTime, Utc};
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -40,20 +40,31 @@ pub struct InsertableVideo {
     pub thumbnail_id: uuid::Uuid,
 }
 
-
 impl InsertableVideo {
-    pub fn new(single_video: youtube_dl::SingleVideo, status: VideoStatus, file_id: uuid::Uuid, thumbnail_id: uuid::Uuid) -> InsertableVideo {
+    pub fn new(
+        single_video: youtube_dl::SingleVideo,
+        status: VideoStatus,
+        file_id: uuid::Uuid,
+        thumbnail_id: uuid::Uuid,
+    ) -> InsertableVideo {
         InsertableVideo {
             title: single_video.title,
             channel: single_video.channel.unwrap(),
             views: single_video.view_count.unwrap(),
-            upload_date: DateTime::from_utc(NaiveDateTime::new(NaiveDate::parse_from_str(&single_video.upload_date.unwrap(), "%Y%m%d").unwrap(), NaiveTime::default()), Utc),
-            archived_date: Utc::now(), 
+            upload_date: DateTime::from_utc(
+                NaiveDateTime::new(
+                    NaiveDate::parse_from_str(&single_video.upload_date.unwrap(), "%Y%m%d")
+                        .unwrap(),
+                    NaiveTime::default(),
+                ),
+                Utc,
+            ),
+            archived_date: Utc::now(),
             duration: single_video.duration.unwrap().as_i64().unwrap() as i32,
             original_url: single_video.webpage_url.unwrap(),
             status,
             file_id,
-            thumbnail_id
+            thumbnail_id,
         }
     }
 }

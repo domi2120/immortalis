@@ -4,7 +4,7 @@ use std::sync::Arc;
 use chrono::Duration;
 use diesel::QueryDsl;
 use diesel::{insert_into, update, BoolExpressionMethods, ExpressionMethods, OptionalExtension};
-use diesel_async::pooled_connection::deadpool::{Pool, self};
+use diesel_async::pooled_connection::deadpool::{self, Pool};
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
@@ -14,7 +14,7 @@ use immortalis_backend_common::env_var_config::EnvVarConfig;
 use immortalis_backend_common::schema::{scheduled_archivals, tracked_collections, videos};
 
 use serde_json::Value;
-use tracing::{info, error};
+use tracing::{error, info};
 use youtube_dl::{Playlist, YoutubeDlOutput};
 pub mod utilities;
 
@@ -41,7 +41,8 @@ async fn main() {
             let task_connection_pool = worker_connection_pool.clone();
             loop {
                 if !track(task_connection_pool.clone()).await {
-                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await; // if no tracked_collections were processed, wait for 5 sec
+                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                    // if no tracked_collections were processed, wait for 5 sec
                 }
             }
         });
@@ -54,78 +55,87 @@ async fn main() {
 }
 
 /// dequeues a TrackedCollection. The Entry will become available again once the processing_timeout has passed, if it hasn't been deleted by then
-async fn dequeue(db_connection: &mut deadpool::Object<AsyncPgConnection>, processing_timeout_seconds: i64) -> Result<Option<TrackedCollection>, diesel::result::Error> {
-    
-    db_connection.transaction::<Option<TrackedCollection>, diesel::result::Error ,_>(|db_connection| async move {
+async fn dequeue(
+    db_connection: &mut deadpool::Object<AsyncPgConnection>,
+    processing_timeout_seconds: i64,
+) -> Result<Option<TrackedCollection>, diesel::result::Error> {
+    db_connection
+        .transaction::<Option<TrackedCollection>, diesel::result::Error, _>(|db_connection| {
+            async move {
+                let not_checked_after = chrono::Utc::now()
+                    .naive_utc()
+                    .checked_sub_signed(Duration::minutes(10))
+                    .unwrap();
 
-        let not_checked_after = chrono::Utc::now()
-            .naive_utc()
-            .checked_sub_signed(Duration::minutes(10))
-            .unwrap();
+                let result = tracked_collections::table
+                    .limit(1)
+                    .filter(
+                        tracked_collections::last_checked
+                            .lt(not_checked_after)
+                            .or(tracked_collections::last_checked.is_null()),
+                    )
+                    .for_update()
+                    .skip_locked()
+                    .first::<TrackedCollection>(db_connection)
+                    .await
+                    .optional()
+                    .unwrap();
 
-        let result = tracked_collections::table
-            .limit(1)
-            .filter(
-                tracked_collections::last_checked
-                    .lt(not_checked_after)
-                    .or(tracked_collections::last_checked.is_null()),
-            )
-            .for_update()
-            .skip_locked()
-            .first::<TrackedCollection>(db_connection)
-            .await
-            .optional()
-            .unwrap();
-
-        if let Some(entry) = result {
-
-            // set not_before to now + timeout. This prevents other processes from trying to preform it as well and allows retry in case this process crashes
-            update(tracked_collections::table)
-            .set(tracked_collections::last_checked.eq(chrono::Utc::now()
-                .naive_utc()
-                .checked_add_signed(Duration::seconds(processing_timeout_seconds))
-                .unwrap()))
-            .filter(tracked_collections::id.eq(entry.id))
-            .execute(db_connection)
-            .await
-            .unwrap();
-            Ok(Some(entry))
-        } else {
-            Ok(None)
-        }
-    }.scope_boxed())
-    .await
+                if let Some(entry) = result {
+                    // set not_before to now + timeout. This prevents other processes from trying to preform it as well and allows retry in case this process crashes
+                    update(tracked_collections::table)
+                        .set(
+                            tracked_collections::last_checked.eq(chrono::Utc::now()
+                                .naive_utc()
+                                .checked_add_signed(Duration::seconds(processing_timeout_seconds))
+                                .unwrap()),
+                        )
+                        .filter(tracked_collections::id.eq(entry.id))
+                        .execute(db_connection)
+                        .await
+                        .unwrap();
+                    Ok(Some(entry))
+                } else {
+                    Ok(None)
+                }
+            }
+            .scope_boxed()
+        })
+        .await
 }
-
 
 /// returns true if a tracked_collection has been processed, returns false if there were no due tracked_collections or an error occured
 async fn track(pool: Pool<AsyncPgConnection>) -> bool {
     let db_connection = &mut pool.get().await.unwrap();
     let tracked_collection = match dequeue(db_connection, 600).await {
-        Ok(x) =>  {
-            match x {
-                Some(scheduled_archival) => {
-                    info!(
-                        scheduled_archival.id = scheduled_archival.id,
-                        scheduled_archival.url = scheduled_archival.url,
-                        "Dequeued entry: {} with url: {}",
-                        scheduled_archival.id,
-                        scheduled_archival.url
-                    );
-                    scheduled_archival
-                },
-                None => {
-                    info!("No due TrackedCollections found");
-                    return false;
-                }
+        Ok(x) => match x {
+            Some(scheduled_archival) => {
+                info!(
+                    scheduled_archival.id = scheduled_archival.id,
+                    scheduled_archival.url = scheduled_archival.url,
+                    "Dequeued entry: {} with url: {}",
+                    scheduled_archival.id,
+                    scheduled_archival.url
+                );
+                scheduled_archival
+            }
+            None => {
+                info!("No due TrackedCollections found");
+                return false;
             }
         },
         Err(x) => {
-            error!("Failed to Dequeue TrackedCollections, encountered error {}", x);
+            error!(
+                "Failed to Dequeue TrackedCollections, encountered error {}",
+                x
+            );
             return false;
-        },
+        }
     };
-    info!("Checking collection id: {} url: {}", tracked_collection.id, tracked_collection.url);
+    info!(
+        "Checking collection id: {} url: {}",
+        tracked_collection.id, tracked_collection.url
+    );
 
     // yt-dlp exits with 1 if there are videos scheduled for the future. This causes YoutubeDL to return an error
     /*
@@ -185,13 +195,16 @@ async fn track(pool: Pool<AsyncPgConnection>) -> bool {
         .await
         .unwrap();
 
-    let scheduled_video_urls = scheduled_archivals::table.select(scheduled_archivals::url).load::<String>(db_connection)
+    let scheduled_video_urls = scheduled_archivals::table
+        .select(scheduled_archivals::url)
+        .load::<String>(db_connection)
         .await
         .unwrap();
 
     archived_or_scheduled_video_urls.extend(scheduled_video_urls);
 
-    let archived_or_scheduled_video_urls = HashSet::<String>::from_iter(archived_or_scheduled_video_urls);
+    let archived_or_scheduled_video_urls =
+        HashSet::<String>::from_iter(archived_or_scheduled_video_urls);
 
     if let Some(videos) = tracked_collection.entries {
         for video in videos {
