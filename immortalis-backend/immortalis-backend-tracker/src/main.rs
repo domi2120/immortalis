@@ -36,13 +36,13 @@ async fn main() {
     let application_connection_pool = Pool::builder(config).build().unwrap();
 
     for _ in 0..env_var_config.tracker_thread_count {
-        let mut interval_timer = tokio::time::interval(tokio::time::Duration::from_secs(5));
         let worker_connection_pool = application_connection_pool.clone();
         tokio::spawn(async move {
             let task_connection_pool = worker_connection_pool.clone();
             loop {
-                interval_timer.tick().await;
-                track(task_connection_pool.clone()).await;
+                if !track(task_connection_pool.clone()).await {
+                    tokio::time::sleep(tokio::time::Duration::from_secs(5)).await; // if no tracked_collections were processed, wait for 5 sec
+                }
             }
         });
     }
@@ -98,7 +98,8 @@ async fn dequeue(db_connection: &mut deadpool::Object<AsyncPgConnection>, proces
 }
 
 
-async fn track(pool: Pool<AsyncPgConnection>) {
+/// returns true if a tracked_collection has been processed, returns false if there were no due tracked_collections or an error occured
+async fn track(pool: Pool<AsyncPgConnection>) -> bool {
     let db_connection = &mut pool.get().await.unwrap();
     let tracked_collection = match dequeue(db_connection, 600).await {
         Ok(x) =>  {
@@ -115,13 +116,13 @@ async fn track(pool: Pool<AsyncPgConnection>) {
                 },
                 None => {
                     info!("No due TrackedCollections found");
-                    return;
+                    return false;
                 }
             }
         },
         Err(x) => {
             error!("Failed to Dequeue TrackedCollections, encountered error {}", x);
-            return;
+            return false;
         },
     };
     info!("Checking collection id: {} url: {}", tracked_collection.id, tracked_collection.url);
@@ -223,6 +224,7 @@ async fn track(pool: Pool<AsyncPgConnection>) {
             info!("Scheduled {} for archival", url)
         }
     }
+    true
 }
 
 use serde::{Deserialize, Serialize};
