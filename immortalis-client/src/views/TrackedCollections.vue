@@ -13,7 +13,15 @@
       :items="schedules"
       :items-per-page="5"
       class="elevation-1"
-    ></v-data-table>
+      >
+        <template v-slot:[`item.trackingStartedAt`]="{ item }">
+          {{ new Date(item.raw.trackingStartedAt).toLocaleDateString() }} {{ new Date(item.raw.trackingStartedAt).toLocaleTimeString() }}
+        </template>
+
+        <template v-slot:[`item.lastChecked`]="{ item }">
+          {{ new Date(item.raw.lastChecked).toLocaleDateString() }} {{ new Date(item.raw.lastChecked).toLocaleTimeString() }}
+        </template>
+      </v-data-table>
     </v-container>
   </template>
   
@@ -32,18 +40,21 @@ const headers = ref(
   [
     {
       title: 'Url',
-      value: 'url',
+      value: 'url', // name of the property from which the value is drawn
+      key: 'url', // key of the column, essential for custom slots
       align: 'start',
       //sortable: 'true'
     },
     {
       title: 'Started tracking at',
       value: 'trackingStartedAt',
+      key: 'trackingStartedAt',
       align: 'start'
     },
     {
       title: 'Last Checked at',
       value: 'lastChecked',
+      key: 'lastChecked',
       align: 'start'
     }
   ]

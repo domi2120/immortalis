@@ -13,7 +13,15 @@
       :items="schedules"
       :items-per-page="5"
       class="elevation-1"
-    ></v-data-table>
+      >
+        <template v-slot:[`item.scheduledAt`]="{ item }">
+          {{ new Date(item.raw.scheduledAt).toLocaleDateString() }} {{ new Date(item.raw.scheduledAt).toLocaleTimeString() }}
+        </template>
+
+        <template v-slot:[`item.notBefore`]="{ item }">
+          {{ new Date(item.raw.notBefore).toLocaleDateString() }} {{ new Date(item.raw.notBefore).toLocaleTimeString() }}
+        </template>
+      </v-data-table>
     </v-container>
   </template>
   
@@ -41,11 +49,13 @@ const headers = ref(
     {
       title: 'ScheduledAt',
       value: 'scheduledAt',
+      key: 'scheduledAt',
       align: 'start'
     },
     {
       title: 'Waiting untill',
       value: 'notBefore',
+      key: 'notBefore',
       align: 'start'
     }
   ]
