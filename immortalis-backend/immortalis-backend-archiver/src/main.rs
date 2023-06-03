@@ -117,27 +117,13 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
 
     let yt_dl_video = yt_video_result.unwrap().into_single_video().unwrap();
 
-    let video_duration = match yt_dl_video.duration {
-        Some(x) => i32::try_from(x.as_i64().unwrap()).unwrap(),
-        None => 0,
-    };
+    let (thumbnail_id, thumbnail_extension, thumbnail_size) = download_image(&yt_dl_video.thumbnail.clone().unwrap(), &env_var_config.file_storage_location).await;
 
-    let (thumbnail_id, thumbnail_extension, thumbnail_size) = download_image(&yt_dl_video.thumbnail.unwrap(), &env_var_config.file_storage_location).await;
-
+    // get file_size from youtube (exact or if its unknown then aprox). This value may be replaced by the actual size of the file after the download
+    let mut file_size = yt_dl_video.filesize.unwrap_or(yt_dl_video.filesize_approx.unwrap_or(0.0) as i64);
+    
     let file_id = uuid::Uuid::new_v4();
-    let video = InsertableVideo {
-        title: yt_dl_video.title,
-        channel: yt_dl_video.channel.unwrap(),
-        views: yt_dl_video.view_count.unwrap(),
-        upload_date: date_string_ymd_to_naive_date_time(&yt_dl_video.upload_date.unwrap()),
-        archived_date: chrono::Utc::now().naive_utc(),
-        duration: video_duration,
-        original_url: scheduled_archival.url.clone(),
-        status:
-            immortalis_backend_common::database_models::video_status::VideoStatus::BeingArchived,
-        file_id,
-        thumbnail_id,
-    };
+    let video = InsertableVideo::new(yt_dl_video, immortalis_backend_common::database_models::video_status::VideoStatus::BeingArchived, file_id, thumbnail_id);
 
     // insert file for thumbnail
     insert_into(files::table)
@@ -145,9 +131,6 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
         .execute(db_connection)
         .await
         .unwrap();
-
-    // get file_size from youtube (exact or if its unknown then aprox). This value may be replaced by the actual size of the file after the download
-    let mut file_size = yt_dl_video.filesize.unwrap_or(yt_dl_video.filesize_approx.unwrap_or(0.0) as i64);
 
     // insert file for video
     insert_into(files::table)
@@ -185,7 +168,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
 
     //tokio::time::sleep(tokio::time::Duration::from_secs(15)).await; //placeholder for actual download
     // if duration is 0 (video), we're done. If it isnt (livestream), we need to reload the metadata and update the duration
-    if video_duration != 0 || env_var_config.skip_download {
+    if video.duration != 0 || env_var_config.skip_download {
         update(videos::table)
             .set(videos::status.eq(VideoStatus::Archived))
             .execute(db_connection)
@@ -193,7 +176,7 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
             .unwrap();
         return
     }
-
+    
     let video_duration = YoutubeDl::new(&scheduled_archival.url)
         .run_async()
         .await
@@ -271,18 +254,6 @@ async fn dequeue(db_connection: &mut deadpool::Object<AsyncPgConnection>, proces
         Ok(result)
     }.scope_boxed())
     .await
-}
-
-/// creates a NaiveDateTime from a yyyy.mm.dd string
-fn date_string_ymd_to_naive_date_time(upload_date: &str) -> chrono::NaiveDateTime {
-    chrono::NaiveDateTime::new(
-        chrono::NaiveDate::from_ymd_opt(
-            upload_date[0..=3].parse::<i32>().unwrap(),
-            upload_date[4..=5].parse::<u32>().unwrap(),
-            upload_date[6..=7].parse::<u32>().unwrap(),
-        )
-        .unwrap(),
-        chrono::NaiveTime::from_num_seconds_from_midnight_opt(0, 0).unwrap())
 }
 
 /// trims query params and downloads the image at the specified url. The image is saved with a Uuid which is returned along with the extension and the file size
