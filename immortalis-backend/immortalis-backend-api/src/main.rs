@@ -79,6 +79,7 @@ async fn schedule(
         return HttpResponse::BadRequest();
     }
 
+    // v is youtubes query param for the video, so its the only thing that we want to keep here
     if let Ok(video_url) = crate::utilities::filter_query_pairs(&schedule_request.url, vec!["v"]) {
         let db_connection = &mut app_state.db_connection_pool.get().await.unwrap();
 
