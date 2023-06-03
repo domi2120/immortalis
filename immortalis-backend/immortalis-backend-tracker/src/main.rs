@@ -3,8 +3,8 @@ use std::sync::Arc;
 
 use chrono::Duration;
 use diesel::QueryDsl;
-use diesel::{insert_into, update, BoolExpressionMethods, ExpressionMethods};
-use diesel_async::pooled_connection::deadpool::Pool;
+use diesel::{insert_into, update, BoolExpressionMethods, ExpressionMethods, OptionalExtension};
+use diesel_async::pooled_connection::deadpool::{Pool, self};
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
@@ -14,7 +14,7 @@ use immortalis_backend_common::env_var_config::EnvVarConfig;
 use immortalis_backend_common::schema::{scheduled_archivals, tracked_collections, videos};
 
 use serde_json::Value;
-use tracing::info;
+use tracing::{info, error};
 use youtube_dl::{Playlist, YoutubeDlOutput};
 pub mod utilities;
 
@@ -53,143 +53,164 @@ async fn main() {
     }
 }
 
+/// dequeues a TrackedCollection. The Entry will become available again once the processing_timeout has passed, if it hasn't been deleted by then
+async fn dequeue(db_connection: &mut deadpool::Object<AsyncPgConnection>, processing_timeout_seconds: i64) -> Result<Option<TrackedCollection>, diesel::result::Error> {
+    
+    db_connection.transaction::<Option<TrackedCollection>, diesel::result::Error ,_>(|db_connection| async move {
+
+        let not_checked_after = chrono::Utc::now()
+            .naive_utc()
+            .checked_sub_signed(Duration::minutes(10))
+            .unwrap();
+
+        let result = tracked_collections::table
+            .limit(1)
+            .filter(
+                tracked_collections::last_checked
+                    .lt(not_checked_after)
+                    .or(tracked_collections::last_checked.is_null()),
+            )
+            .for_update()
+            .skip_locked()
+            .first::<TrackedCollection>(db_connection)
+            .await
+            .optional()
+            .unwrap();
+
+        // set not_before to now + timeout. This prevents other processes from trying to preform it as well and allows retry in case this process crashes
+        update(tracked_collections::table)
+            .set(tracked_collections::last_checked.eq(chrono::Utc::now()
+            .naive_utc()
+            .checked_add_signed(Duration::seconds(processing_timeout_seconds))
+            .unwrap()))
+            .execute(db_connection)
+            .await
+            .unwrap();
+        Ok(result)
+    }.scope_boxed())
+    .await
+}
+
+
 async fn track(pool: Pool<AsyncPgConnection>) {
     let db_connection = &mut pool.get().await.unwrap();
-    let _g = db_connection
-        .transaction::<_, diesel::result::Error, _>(|db_connection| {
-            async move {
-                let not_checked_after = chrono::Utc::now()
-                    .naive_utc()
-                    .checked_sub_signed(Duration::minutes(10))
-                    .unwrap();
-
-                let results = tracked_collections::table
-                    .limit(1)
-                    .filter(
-                        tracked_collections::last_checked
-                            .lt(not_checked_after)
-                            .or(tracked_collections::last_checked.is_null()),
-                    )
-                    .for_update()
-                    .skip_locked()
-                    .load::<TrackedCollection>(db_connection)
-                    .await
-                    .unwrap();
-
-                if results.is_empty() {
+    let tracked_collection = match dequeue(db_connection, 600).await {
+        Ok(x) =>  {
+            match x {
+                Some(scheduled_archival) => {
+                    info!(
+                        scheduled_archival.id = scheduled_archival.id,
+                        scheduled_archival.url = scheduled_archival.url,
+                        "Dequeued entry: {} with url: {}",
+                        scheduled_archival.id,
+                        scheduled_archival.url
+                    );
+                    scheduled_archival
+                },
+                None => {
                     info!("No due TrackedCollections found");
-                    return Ok(());
+                    return;
                 }
+            }
+        },
+        Err(x) => {
+            error!("Failed to Dequeue TrackedCollections, encountered error {}", x);
+            return;
+        },
+    };
+    info!("Checking collection id: {} url: {}", tracked_collection.id, tracked_collection.url);
 
-                let result = &results[0];
+    // yt-dlp exits with 1 if there are videos scheduled for the future. This causes YoutubeDL to return an error
+    /*
+        let tracked_collection = YoutubeDl::new(&result.url)
+        .extra_arg("-i")
+        .run_async()
+        .await
+        .unwrap()
+        .into_playlist()
+        .unwrap();
+    */
+    let cmd = async_process::Command::new("yt-dlp")
+        .arg(&tracked_collection.url)
+        .arg("-J")
+        .output()
+        .await;
 
-                // update last_checked, in case we get an error later we also prevent getting stuck by doing it this early
-                update(tracked_collections::table)
-                    .filter(tracked_collections::id.eq(result.id))
-                    .set(tracked_collections::last_checked.eq(chrono::Utc::now().naive_utc()))
+    let value: Value = serde_json::from_reader(cmd.unwrap().stdout.as_slice()).unwrap();
+    let is_playlist = value["_type"] == serde_json::json!("playlist");
+
+    // @TODO scheduled streams will end up returning "null" in json, causing the thread to panic. This fixes it but seems kinda hacky
+    let youtube_dl_output: YoutubeDlOutput = if is_playlist {
+        let fixed_playlist: FixedPlaylist = serde_json::from_value(value).unwrap();
+        let c = Some(
+            fixed_playlist
+                .entries
+                .unwrap()
+                .iter()
+                .filter_map(|x| x.clone())
+                .collect(),
+        );
+        let playlist: youtube_dl::Playlist = Playlist {
+            entries: c,
+            extractor: fixed_playlist.extractor,
+            extractor_key: fixed_playlist.extractor_key,
+            id: fixed_playlist.id,
+            title: fixed_playlist.title,
+            uploader: fixed_playlist.uploader,
+            uploader_id: fixed_playlist.uploader_id,
+            uploader_url: fixed_playlist.uploader_url,
+            webpage_url: fixed_playlist.webpage_url,
+            webpage_url_basename: fixed_playlist.webpage_url_basename,
+            thumbnails: fixed_playlist.thumbnails,
+        };
+
+        YoutubeDlOutput::Playlist(Box::new(playlist))
+    } else {
+        let video: youtube_dl::SingleVideo = serde_json::from_value(value).unwrap();
+        YoutubeDlOutput::SingleVideo(Box::new(video))
+    };
+
+    let tracked_collection = youtube_dl_output.into_playlist().unwrap();
+
+    let archived_video_urls = HashSet::<String>::from_iter(
+        videos::table
+            .select(videos::original_url)
+            .load::<String>(db_connection)
+            .await
+            .unwrap(),
+    );
+
+    if let Some(videos) = tracked_collection.entries {
+        for video in videos {
+            let url = video.webpage_url.unwrap();
+
+            if utilities::is_youtube_video_collection(&url) {
+                insert_into(tracked_collections::table)
+                    .values(tracked_collections::url.eq(&url))
+                    .on_conflict_do_nothing()
                     .execute(db_connection)
                     .await
                     .unwrap();
-
-                info!("Checking collection id: {} url: {}", result.id, result.url);
-
-                // yt-dlp exits with 1 if there are videos scheduled for the future. This causes YoutubeDL to return an error
-                /*
-                    let tracked_collection = YoutubeDl::new(&result.url)
-                    .extra_arg("-i")
-                    .run_async()
-                    .await
-                    .unwrap()
-                    .into_playlist()
-                    .unwrap();
-                */
-                let cmd = async_process::Command::new("yt-dlp")
-                    .arg(&result.url)
-                    .arg("-J")
-                    .output()
-                    .await;
-
-                let value: Value = serde_json::from_reader(cmd.unwrap().stdout.as_slice()).unwrap();
-                let is_playlist = value["_type"] == serde_json::json!("playlist");
-
-                // @TODO scheduled streams will end up returning "null" in json, causing the thread to panic. This fixes it but seems kinda hacky
-                let youtube_dl_output: YoutubeDlOutput = if is_playlist {
-                    let fixed_playlist: FixedPlaylist = serde_json::from_value(value).unwrap();
-                    let c = Some(
-                        fixed_playlist
-                            .entries
-                            .unwrap()
-                            .iter()
-                            .filter_map(|x| x.clone())
-                            .collect(),
-                    );
-                    let playlist: youtube_dl::Playlist = Playlist {
-                        entries: c,
-                        extractor: fixed_playlist.extractor,
-                        extractor_key: fixed_playlist.extractor_key,
-                        id: fixed_playlist.id,
-                        title: fixed_playlist.title,
-                        uploader: fixed_playlist.uploader,
-                        uploader_id: fixed_playlist.uploader_id,
-                        uploader_url: fixed_playlist.uploader_url,
-                        webpage_url: fixed_playlist.webpage_url,
-                        webpage_url_basename: fixed_playlist.webpage_url_basename,
-                        thumbnails: fixed_playlist.thumbnails,
-                    };
-
-                    YoutubeDlOutput::Playlist(Box::new(playlist))
-                } else {
-                    let video: youtube_dl::SingleVideo = serde_json::from_value(value).unwrap();
-                    YoutubeDlOutput::SingleVideo(Box::new(video))
-                };
-
-                let tracked_collection = youtube_dl_output.into_playlist().unwrap();
-
-                let archived_video_urls = HashSet::<String>::from_iter(
-                    videos::table
-                        .select(videos::original_url)
-                        .load::<String>(db_connection)
-                        .await
-                        .unwrap(),
-                );
-
-                if let Some(videos) = tracked_collection.entries {
-                    for video in videos {
-                        let url = video.webpage_url.unwrap();
-
-                        if utilities::is_youtube_video_collection(&url) {
-                            insert_into(tracked_collections::table)
-                                .values(tracked_collections::url.eq(&url))
-                                .on_conflict_do_nothing()
-                                .execute(db_connection)
-                                .await
-                                .unwrap();
-                            info!("Inserted {} into TrackedCollections", url);
-                            continue;
-                        }
-
-                        if archived_video_urls.contains(&url) {
-                            info!(
-                                "{} has already been archived and will not be scheduled again",
-                                url
-                            )
-                        }
-
-                        insert_into(scheduled_archivals::table)
-                            .values(scheduled_archivals::url.eq(&url))
-                            .on_conflict_do_nothing()
-                            .execute(db_connection)
-                            .await
-                            .unwrap();
-                        info!("Scheduled {} for archival", url)
-                    }
-                }
-
-                Ok(())
+                info!("Inserted {} into TrackedCollections", url);
+                continue;
             }
-            .scope_boxed()
-        })
-        .await;
+
+            if archived_video_urls.contains(&url) {
+                info!(
+                    "{} has already been archived and will not be scheduled again",
+                    url
+                )
+            }
+
+            insert_into(scheduled_archivals::table)
+                .values(scheduled_archivals::url.eq(&url))
+                .on_conflict_do_nothing()
+                .execute(db_connection)
+                .await
+                .unwrap();
+            info!("Scheduled {} for archival", url)
+        }
+    }
 }
 
 use serde::{Deserialize, Serialize};
