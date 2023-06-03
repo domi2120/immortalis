@@ -175,6 +175,13 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
             .execute(db_connection)
             .await
             .unwrap();
+
+        // delete the schedule once archival is completed
+        delete(scheduled_archivals::table)
+            .filter(scheduled_archivals::id.eq(scheduled_archival.id))
+            .execute(db_connection)
+            .await
+            .unwrap();
         return
     }
     
