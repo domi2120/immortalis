@@ -22,20 +22,14 @@
 
 <script setup lang="ts">
 import { Ref, ref, onMounted, onUnmounted } from 'vue';
-import { Video } from '@/models/video';
 import router from './router';
 import { emitter } from '@/eventService';
 import { WebSocketEvent } from './models/webSocketEvent';
 import consts from './consts';
 
 const drawerOpened = ref(false);
-let videos: Ref<Video[]> = ref([]);
 
 let searchText: Ref<string> = ref("");
-
-const search = async () => {
-  videos.value = await (await fetch("api/search?" + new URLSearchParams({term: `${searchText.value}`}))).json();
-}
 
 let webSocket: WebSocket;
 let webSocketReconnectInterval: any; // handle to the interval
@@ -75,9 +69,6 @@ onUnmounted(async () => {
   clearInterval(webSocketReconnectInterval);
   webSocket.close();
 })
-
-  
-search();
 </script>
 <style>
 </style>
