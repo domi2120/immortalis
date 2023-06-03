@@ -63,7 +63,7 @@ BEGIN
 END;
 $$ LANGUAGE 'plpgsql';
 
-CREATE OR REPLACE TRIGGER scheduled_archivals_after_delete_insert_trigger AFTER DELETE OR INSERT
+CREATE OR REPLACE TRIGGER scheduled_archivals_after_delete_insert_trigger AFTER DELETE OR INSERT OR UPDATE
        ON scheduled_archivals
        FOR EACH ROW EXECUTE PROCEDURE notify_delete_insert();
 
