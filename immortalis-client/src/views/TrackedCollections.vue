@@ -73,6 +73,9 @@ async function onWebSocketTrackedCollection (webSocketEvent: WebSocketEvent<Data
   case "insert":
     schedules.value.push(webSocketEvent.data.record);
     break;
+  case "update":
+    schedules.value.splice(schedules.value.findIndex(s => s.id == webSocketEvent.data.record.id), 1, webSocketEvent.data.record)
+    break;
   case "delete":
     schedules.value.splice(schedules.value.findIndex(s => s.id == webSocketEvent.data.record.id), 1)
     break;

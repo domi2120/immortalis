@@ -1,4 +1,4 @@
 export interface DataChangeEvent<T> {
-    action: "delete" | "insert",
+    action: "delete" | "insert" | "update",
     record: T,
 }
