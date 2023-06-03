@@ -242,7 +242,7 @@ async fn dequeue(db_connection: &mut deadpool::Object<AsyncPgConnection>, proces
 
         let result = scheduled_archivals::table
             .limit(1)
-            .filter(scheduled_archivals::not_before.lt(chrono::Utc::now().naive_utc()))
+            .filter(scheduled_archivals::not_before.lt(chrono::Utc::now()))
             .for_update()
             .skip_locked()
             .first::<ScheduledArchival>(db_connection)

@@ -19,8 +19,8 @@ diesel::table! {
     scheduled_archivals (id) {
         id -> Int4,
         url -> Varchar,
-        scheduled_at -> Timestamp,
-        not_before -> Timestamp,
+        scheduled_at -> Timestamptz,
+        not_before -> Timestamptz,
     }
 }
 
@@ -28,8 +28,8 @@ diesel::table! {
     tracked_collections (id) {
         id -> Int4,
         url -> Varchar,
-        tracking_started_at -> Timestamp,
-        last_checked -> Nullable<Timestamp>,
+        tracking_started_at -> Timestamptz,
+        last_checked -> Nullable<Timestamptz>,
     }
 }
 
@@ -42,8 +42,8 @@ diesel::table! {
         title -> Varchar,
         channel -> Varchar,
         views -> Int8,
-        upload_date -> Timestamp,
-        archived_date -> Timestamp,
+        upload_date -> Timestamptz,
+        archived_date -> Timestamptz,
         duration -> Int4,
         original_url -> Varchar,
         status -> VideoStatus,

@@ -12,8 +12,8 @@ CREATE TABLE videos (
   title VARCHAR NOT NULL,
   channel varchar NOT NULL,
   views bigint NOT NULL,
-  upload_date timestamp without time zone NOT NULL,
-  archived_date timestamp without time zone NOT NULL,
+  upload_date timestamp with time zone NOT NULL,
+  archived_date timestamp with time zone NOT NULL,
   duration int NOT NULL,
   original_url varchar NOT NULL UNIQUE,
   status video_status NOT NULL,
@@ -31,8 +31,8 @@ CREATE TABLE videos (
 CREATE TABLE scheduled_archivals (
     id int not null primary key generated always as identity,
     url varchar NOT NULL,
-    scheduled_at timestamp without time zone NOT NULL DEFAULT now(),
-    not_before timestamp without time zone NOT NULL DEFAULT now(),
+    scheduled_at timestamp with time zone NOT NULL DEFAULT now(),
+    not_before timestamp with time zone NOT NULL DEFAULT now(),
     CONSTRAINT unique_url UNIQUE (url)
 );
 
@@ -40,8 +40,8 @@ CREATE TABLE scheduled_archivals (
 CREATE TABLE tracked_collections (
     id int not null primary key generated always as identity,
     url varchar NOT NULL UNIQUE,
-    tracking_started_at timestamp without time zone NOT NULL DEFAULT now(),
-    last_checked timestamp without time zone
+    tracking_started_at timestamp with time zone NOT NULL DEFAULT now(),
+    last_checked timestamp with time zone
 );
 
 CREATE OR REPLACE FUNCTION notify_delete_insert()

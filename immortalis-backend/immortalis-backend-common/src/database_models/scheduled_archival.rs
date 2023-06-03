@@ -1,4 +1,5 @@
 use crate::schema::scheduled_archivals;
+use chrono::Utc;
 use diesel::prelude::*;
 use serde::{Deserialize, Serialize};
 
@@ -7,6 +8,6 @@ use serde::{Deserialize, Serialize};
 pub struct ScheduledArchival {
     pub id: i32,
     pub url: String,
-    pub scheduled_at: chrono::NaiveDateTime,
-    pub not_before: chrono::NaiveDateTime,
+    pub scheduled_at: chrono::DateTime<Utc>,
+    pub not_before: chrono::DateTime<Utc>,
 }
