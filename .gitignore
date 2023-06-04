@@ -2,3 +2,4 @@ downloads
 temp-downloads
 .env
 .docker-compose.env
+minio-storage

@@ -23,7 +23,6 @@ use tracing::{error, info, warn};
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-
     let env_var_config = Arc::new(envy::from_env::<EnvVarConfig>().unwrap());
 
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
@@ -33,25 +32,57 @@ async fn main() {
 
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    fs::create_dir_all(env_var_config.file_storage_location.clone())
-        .await
-        .expect("could not create file_storage_location");
+    if !env_var_config.use_s3 {
+        // ensure file_storage dir exists, if s3 isn't being used
+        fs::create_dir_all(env_var_config.file_storage_location.clone())
+            .await
+            .expect("could not create file_storage_location");
+    }
 
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
         &env_var_config.database_url,
     );
     let application_connection_pool = Pool::builder(config).build().unwrap();
 
+    // This requires a running minio server at localhost:9000. If no s3 is configured this will not throw an error as long as the bucket isn't used
+    let bucket = Arc::new(
+        s3::Bucket::new(
+            &env_var_config.s3_bucket_name,
+            s3::Region::Custom {
+                region: "eu-central-1".to_owned(),
+                endpoint: env_var_config.s3_url.to_owned(),
+            },
+            s3::creds::Credentials::new(
+                Some(&env_var_config.s3_access_key),
+                Some(&env_var_config.s3_secret_key),
+                None,
+                None,
+                None,
+            )
+            .unwrap(),
+        )
+        .unwrap()
+        .with_path_style(),
+    );
+
     // spawn workers equal to archiver_thread_count
     for _ in 0..env_var_config.archiver_thread_count {
         let worker_connection_pool = application_connection_pool.clone();
         let worker_env_var_config = env_var_config.clone();
+        let worker_s3_bucket = bucket.clone();
 
         tokio::spawn(async move {
             let task_env_var_config = worker_env_var_config.clone();
             let task_connection_pool = worker_connection_pool.clone();
+            let task_s3_bucket = worker_s3_bucket.clone();
             loop {
-                if !archive(task_connection_pool.clone(), task_env_var_config.clone()).await {
+                if !archive(
+                    task_connection_pool.clone(),
+                    task_env_var_config.clone(),
+                    task_s3_bucket.clone(),
+                )
+                .await
+                {
                     tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                     // if nothing was archived, wait for 5 sec
                 }
@@ -66,7 +97,11 @@ async fn main() {
 }
 
 /// returns true if a video has been archived, returns false if there were no schedules or an error occured
-async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig>) -> bool {
+async fn archive(
+    pool: Pool<AsyncPgConnection>,
+    env_var_config: Arc<EnvVarConfig>,
+    bucket: Arc<s3::Bucket>,
+) -> bool {
     let db_connection = &mut pool.get().await.unwrap();
 
     let scheduled_archival = match dequeue(
@@ -129,6 +164,8 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
     let (thumbnail_id, thumbnail_extension, thumbnail_size) = download_image(
         &yt_dl_video.thumbnail.clone().unwrap(),
         &env_var_config.file_storage_location,
+        bucket.clone(),
+        env_var_config.use_s3,
     )
     .await;
 
@@ -179,29 +216,15 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
 
     // if simulate_download is false, we perform the actual download, otherwise we wait for simulated_download_duration_seconds
     if !env_var_config.simulate_download {
-        let temp_file_name = download_video(
+        file_size = download_video(
             &scheduled_archival.url,
             &env_var_config.temp_file_storage_location,
+            &env_var_config.file_storage_location,
+            bucket.clone(),
+            env_var_config.use_s3,
             &file_id,
         )
         .await;
-
-        file_size = fs::File::open(&temp_file_name)
-            .await
-            .unwrap()
-            .metadata()
-            .await
-            .unwrap()
-            .len() as i64;
-        // move it from temp storage to longtime storage. This may later be replaced by for example an external S3 or similar
-        fs::rename(
-            &temp_file_name,
-            env_var_config.file_storage_location.to_string()
-                + file_id.to_string().as_str()
-                + ".mkv",
-        )
-        .await
-        .unwrap();
     } else {
         tokio::time::sleep(tokio::time::Duration::from_secs(
             env_var_config.simulated_download_duration_seconds,
@@ -267,13 +290,16 @@ async fn archive(pool: Pool<AsyncPgConnection>, env_var_config: Arc<EnvVarConfig
 async fn download_video(
     url: &str,
     temp_file_storage_location: &str,
+    file_storage_location: &str,
+    bucket: Arc<s3::Bucket>,
+    use_s3: bool,
     file_id: &uuid::Uuid,
-) -> String {
+) -> i64 {
     let file_name = temp_file_storage_location.to_string() + file_id.to_string().as_str() + ".mkv";
     let cmd = Command::new("yt-dlp")
         .arg(url)
         .arg("-o")
-        .arg(temp_file_storage_location.to_string() + file_id.to_string().as_str() + ".mkv")
+        .arg(&file_name)
         .arg("--embed-thumbnail") // webm doesnt support embedded thumbnails, so we should get .mkv files
         .arg("--embed-metadata")
         .arg("--embed-chapters")
@@ -286,7 +312,34 @@ async fn download_video(
         .output();
 
     cmd.await.unwrap();
-    file_name
+
+    let file_size = fs::File::open(&file_name)
+        .await
+        .unwrap()
+        .metadata()
+        .await
+        .unwrap()
+        .len() as i64;
+
+    if use_s3 {
+        bucket
+            .put_object_stream(
+                &mut tokio::fs::File::open(&file_name).await.unwrap(),
+                file_id.to_string() + ".mkv",
+            )
+            .await
+            .unwrap();
+        fs::remove_file(&file_name).await.unwrap(); // remove file from temp storage
+    } else {
+        fs::rename(
+            &file_name,
+            file_storage_location.to_string() + file_id.to_string().as_str() + ".mkv",
+        )
+        .await
+        .unwrap();
+    }
+
+    file_size
 }
 
 /// dequeues a ScheduledArchival. The Entry will become available again once the processing_timeout has passed, if it hasn't been deleted by then
@@ -331,7 +384,12 @@ async fn dequeue(
 }
 
 /// trims query params and downloads the image at the specified url. The image is saved with a Uuid which is returned along with the extension and the file size
-async fn download_image(url: &str, file_storage_location: &str) -> (uuid::Uuid, String, usize) {
+async fn download_image(
+    url: &str,
+    file_storage_location: &str,
+    bucket: Arc<s3::Bucket>,
+    use_s3: bool,
+) -> (uuid::Uuid, String, usize) {
     let resp = reqwest::get(url).await.unwrap().bytes().await.unwrap();
     let thumbnail_id = uuid::Uuid::new_v4();
     let mut thumbnail_extension = url.split('.').last().unwrap();
@@ -339,11 +397,31 @@ async fn download_image(url: &str, file_storage_location: &str) -> (uuid::Uuid, 
         .find('?')
         .unwrap_or(thumbnail_extension.len())]; // trim params that may follow the extension
 
-    fs::write(
-        file_storage_location.to_string() + &thumbnail_id.to_string() + "." + thumbnail_extension,
-        &resp,
-    )
-    .await
-    .unwrap();
-    (thumbnail_id, thumbnail_extension.into(), resp.len())
+    let file_size = resp.len();
+    if use_s3 {
+        let test = resp.into_iter().collect::<Vec<u8>>();
+        // write it to s3
+        bucket
+            .put_object_stream(
+                &mut test.as_slice(),
+                thumbnail_id.to_string() + "." + thumbnail_extension,
+            )
+            .await
+            .unwrap();
+    } else {
+        // due to smartstring (dependency) there is an issue here
+        // https://github.com/bodil/smartstring/issues/7
+        // https://github.com/rust-lang/rust/issues/77143
+        fs::write(
+            file_storage_location.to_string()
+                + (&thumbnail_id.to_string()).as_str()
+                + "."
+                + thumbnail_extension,
+            &resp,
+        )
+        .await
+        .unwrap();
+    }
+
+    (thumbnail_id, thumbnail_extension.into(), file_size)
 }

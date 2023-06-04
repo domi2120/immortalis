@@ -118,7 +118,8 @@ async fn search(query: web::Query<SearchQuery>, app_state: web::Data<AppState>) 
         .into_boxed();
 
     if let Some(x) = &query.term {
-        results = results.filter(videos::title.ilike("%".to_string() + x + "%"))
+        results =
+            results.filter(videos::title.ilike("%".to_string() + (x.to_owned() + "%").as_str()))
     }
 
     let results: Vec<(Video, i64)> = results
@@ -146,7 +147,7 @@ async fn get_file(
     req: HttpRequest,
     query: web::Query<GetFileRequestData>,
     app_state: web::Data<AppState>,
-) -> Result<HttpResponse, actix_web::error::Error> {
+) -> Result<impl Responder, actix_web::error::Error> {
     let mut conn = app_state.db_connection_pool.get().await.unwrap();
 
     let f: immortalis_backend_common::database_models::file::File = files::table
@@ -155,26 +156,50 @@ async fn get_file(
         .await
         .unwrap();
 
-    let response = actix_files::NamedFile::open_async(format!(
-        "{}{}.{}",
-        app_state.file_storage_location.to_owned(),
-        &f.id.to_string(),
-        &f.file_extension
-    ))
-    .await?;
+    // if s3 is used, redirect to a presigned link to the s3, otherwise return the file from disk
+    if app_state.env_var_config.use_s3 {
+        let mut custom_queries = HashMap::new();
+        custom_queries.insert(
+            "response-content-disposition".into(),
+            format!(
+                "attachment; filename=\"{}.{}\"",
+                f.file_name, &f.file_extension
+            )
+            .into(),
+        );
+        let presign = app_state
+            .bucket
+            .presign_get(
+                format!("{}.{}", &f.id.to_string(), &f.file_extension),
+                60,
+                Some(custom_queries),
+            )
+            .unwrap();
 
-    Ok(response
-        .set_content_disposition(ContentDisposition {
-            disposition: actix_web::http::header::DispositionType::Attachment,
-            parameters: vec![DispositionParam::FilenameExt(ExtendedValue {
-                value: format!("{}.{}", f.file_name, &f.file_extension)
-                    .as_bytes()
-                    .to_vec(),
-                charset: Charset::Ext("UTF-8".to_string()),
-                language_tag: None,
-            })],
-        })
-        .into_response(&req))
+        Ok(actix_web::web::Redirect::to(presign)
+            .respond_to(&req)
+            .map_into_boxed_body())
+    } else {
+        let response = actix_files::NamedFile::open_async(format!(
+            "{}{}.{}",
+            app_state.file_storage_location.to_owned(),
+            &f.id.to_string(),
+            &f.file_extension
+        ))
+        .await?;
+        Ok(response
+            .set_content_disposition(ContentDisposition {
+                disposition: actix_web::http::header::DispositionType::Attachment,
+                parameters: vec![DispositionParam::FilenameExt(ExtendedValue {
+                    value: format!("{}.{}", f.file_name, &f.file_extension)
+                        .as_bytes()
+                        .to_vec(),
+                    charset: Charset::Ext("UTF-8".to_string()),
+                    language_tag: None,
+                })],
+            })
+            .into_response(&req))
+    }
 }
 
 struct AppState {
@@ -182,6 +207,7 @@ struct AppState {
     file_storage_location: String,
     web_socket_connections: Arc<RwLock<HashMap<String, Addr<WebSocketActor>>>>,
     env_var_config: Arc<EnvVarConfig>,
+    bucket: Arc<s3::Bucket>,
 }
 
 async fn distribute_postgres_events(app_state: web::Data<AppState>) {
@@ -297,11 +323,32 @@ async fn main() -> std::io::Result<()> {
 
     let pool = Pool::builder(config).build().unwrap();
 
+    let bucket = Arc::new(
+        s3::Bucket::new(
+            &env_var_config.s3_bucket_name,
+            s3::Region::Custom {
+                region: "eu-central-1".to_owned(),
+                endpoint: env_var_config.s3_url.to_owned(),
+            },
+            s3::creds::Credentials::new(
+                Some(&env_var_config.s3_access_key),
+                Some(&env_var_config.s3_secret_key),
+                None,
+                None,
+                None,
+            )
+            .unwrap(),
+        )
+        .unwrap()
+        .with_path_style(),
+    );
+
     let app_state = web::Data::new(AppState {
         db_connection_pool: pool.clone(),
         file_storage_location: env_var_config.file_storage_location.clone(),
         web_socket_connections: Arc::new(RwLock::new(HashMap::new())),
         env_var_config: env_var_config.clone(),
+        bucket: bucket.clone(),
     });
 
     let worker_app_state = app_state.clone();
