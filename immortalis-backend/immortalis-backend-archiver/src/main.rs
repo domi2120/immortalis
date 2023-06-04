@@ -9,6 +9,7 @@ use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use dotenvy::dotenv;
+use futures::stream::TryStreamExt;
 use immortalis_backend_common::database_models::file::File;
 use immortalis_backend_common::database_models::scheduled_archival::ScheduledArchival;
 use immortalis_backend_common::database_models::video::InsertableVideo;
@@ -390,25 +391,33 @@ async fn download_image(
     bucket: Arc<s3::Bucket>,
     use_s3: bool,
 ) -> (uuid::Uuid, String, usize) {
-    let resp = reqwest::get(url).await.unwrap().bytes().await.unwrap();
+    let resp = reqwest::get(url).await.unwrap();
     let thumbnail_id = uuid::Uuid::new_v4();
     let mut thumbnail_extension = url.split('.').last().unwrap();
     thumbnail_extension = &thumbnail_extension[0..thumbnail_extension
         .find('?')
         .unwrap_or(thumbnail_extension.len())]; // trim params that may follow the extension
 
-    let file_size = resp.len();
+    let file_size = resp.content_length().unwrap() as usize; //resp.len();
     if use_s3 {
-        let test = resp.into_iter().collect::<Vec<u8>>();
         // write it to s3
+        let resp = resp.bytes_stream();
+
+        // https://users.rust-lang.org/t/tokio-reqwest-byte-stream-to-lines/65258/2
+        fn convert_err(_err: reqwest::Error) -> std::io::Error {
+            todo!()
+        }
+        let mut reader = tokio_util::io::StreamReader::new(resp.map_err(convert_err));
+
         bucket
             .put_object_stream(
-                &mut test.as_slice(),
+                &mut reader,
                 thumbnail_id.to_string() + "." + thumbnail_extension,
             )
             .await
             .unwrap();
     } else {
+        let resp = resp.bytes().await.unwrap();
         // due to smartstring (dependency) there is an issue here
         // https://github.com/bodil/smartstring/issues/7
         // https://github.com/rust-lang/rust/issues/77143
