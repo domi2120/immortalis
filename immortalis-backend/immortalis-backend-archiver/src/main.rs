@@ -103,7 +103,17 @@ async fn archive(
     env_var_config: Arc<EnvVarConfig>,
     bucket: Arc<s3::Bucket>,
 ) -> bool {
-    let db_connection = &mut pool.get().await.unwrap();
+    // try getting db connection, retry if it fails
+    let db_connection = &mut loop {
+        match pool.get().await {
+            Ok(c) => break c,
+            Err(e) => {
+                error!("Encountered Database error: {}", e);
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                continue;
+            },
+        }
+    };
 
     let scheduled_archival = match dequeue(
         db_connection,
@@ -351,6 +361,7 @@ async fn dequeue(
     db_connection
         .transaction::<Option<ScheduledArchival>, diesel::result::Error, _>(|db_connection| {
             async move {
+
                 let result = scheduled_archivals::table
                     .limit(1)
                     .filter(scheduled_archivals::not_before.lt(chrono::Utc::now()))
@@ -358,8 +369,7 @@ async fn dequeue(
                     .skip_locked()
                     .first::<ScheduledArchival>(db_connection)
                     .await
-                    .optional()
-                    .unwrap();
+                    .optional()?;
 
                 if let Some(entry) = result {
                     // set not_before to now + timeout. This prevents other processes from trying to preform it as well and allows retry in case this process crashes
@@ -372,8 +382,7 @@ async fn dequeue(
                         )
                         .filter(scheduled_archivals::id.eq(entry.id))
                         .execute(db_connection)
-                        .await
-                        .unwrap();
+                        .await?;
                     Ok(Some(entry))
                 } else {
                     Ok(None)

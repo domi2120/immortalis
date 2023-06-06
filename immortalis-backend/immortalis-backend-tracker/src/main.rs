@@ -78,8 +78,7 @@ async fn dequeue(
                     .skip_locked()
                     .first::<TrackedCollection>(db_connection)
                     .await
-                    .optional()
-                    .unwrap();
+                    .optional()?;
 
                 if let Some(entry) = result {
                     // set not_before to now + timeout. This prevents other processes from trying to preform it as well and allows retry in case this process crashes
@@ -92,8 +91,7 @@ async fn dequeue(
                         )
                         .filter(tracked_collections::id.eq(entry.id))
                         .execute(db_connection)
-                        .await
-                        .unwrap();
+                        .await?;
                     Ok(Some(entry))
                 } else {
                     Ok(None)
@@ -106,7 +104,19 @@ async fn dequeue(
 
 /// returns true if a tracked_collection has been processed, returns false if there were no due tracked_collections or an error occured
 async fn track(pool: Pool<AsyncPgConnection>) -> bool {
-    let db_connection = &mut pool.get().await.unwrap();
+    
+    // try getting db connection, retry if it fails
+    let db_connection = &mut loop {
+        match pool.get().await {
+            Ok(c) => break c,
+            Err(e) => {
+                error!("Encountered Database error: {}", e);
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                continue;
+            },
+        }
+    };
+    
     let tracked_collection = match dequeue(db_connection, 600).await {
         Ok(x) => match x {
             Some(scheduled_archival) => {
