@@ -48,7 +48,7 @@ onMounted(async () => {
 })
 
 async function connectWebsocket(){
-  webSocket = new WebSocket(`ws://${window.location.host}/api/ws/`)
+  webSocket = new WebSocket(`${location.protocol === "https:" ? 'wss' : 'ws'}://${window.location.host}/api/ws/`)
   webSocket.onmessage = async (x) => {
     let message: WebSocketEvent<any> = JSON.parse(x.data);
     switch (message.channel) {
