@@ -1,5 +1,7 @@
 use diesel::{Connection, PgConnection};
-use diesel_migrations::{embed_migrations, EmbeddedMigrations, MigrationHarness};
+use diesel_migrations::{
+    embed_migrations, EmbeddedMigrations, HarnessWithOutput, MigrationHarness,
+};
 use dotenvy::dotenv;
 use immortalis_backend_common::env_var_config::EnvVarConfig;
 use std::sync::Arc;
@@ -15,5 +17,6 @@ fn main() {
 
     const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
-    let _result = connection.run_pending_migrations(MIGRATIONS);
+    let mut harness = HarnessWithOutput::write_to_stdout(&mut connection);
+    println!("{:#?}", harness.run_pending_migrations(MIGRATIONS));
 }
