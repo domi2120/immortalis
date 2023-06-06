@@ -1,0 +1,149 @@
+# Default values for immortalis.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+api:
+  image:
+    repository: localhost:32000/immortalis/immortalis-backend-api
+    pullPolicy: Always
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "latest"
+  port: 8080
+  replicaCount: 1
+  # We usually recommend not to specify default resources and to leave this as a conscious
+  # choice for the user. This also increases chances charts run on environments with little
+  # resources, such as Minikube. If you do want to specify resources, uncomment the following
+  # lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  # limits:
+  #   cpu: 100m
+  #   memory: 128Mi
+  # requests:
+  #   cpu: 100m
+  #   memory: 128Mi
+  resources: {}
+
+archiver:
+  image:
+    repository: localhost:32000/immortalis/immortalis-backend-archiver
+    pullPolicy: Always
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "latest"
+  replicaCount: 1
+  resources: {}
+
+tracker:
+  image:
+    repository: localhost:32000/immortalis/immortalis-backend-tracker
+    pullPolicy: Always
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "latest"
+  replicaCount: 1
+  resources: {}
+
+common:
+  image:
+    repository: localhost:32000/immortalis/immortalis-backend-common
+    pullPolicy: Always
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "latest"
+
+client:
+  image:
+    repository: localhost:32000/immortalis/immortalis-client
+    pullPolicy: Always
+    # Overrides the image tag whose default is the chart appVersion.
+    tag: "latest"
+  replicaCount: 1
+  resources: {}
+  port: 80
+
+postgresql: # dont set this to false, existing postgres is not yet implemented
+  enabled: true 
+  auth:
+    # PostgreSQL User to create
+    username: immortalis
+    # PostgreSQL Password for the new user
+    password: immortalis
+    # PostgreSQL Database to create
+    database: immortalis
+
+minio:
+  enabled: true # dont set this to false, existing s3 is not yet implemented
+  replicas: 1
+  persistence:
+    enabled: false
+  mode: standalone
+  rootUser: root
+  rootPassword: root
+  users:
+    - accessKey: immortalis
+      secretKey: immortalis
+      policy: consoleAdmin
+  buckets:
+    - name: immortalis
+      policy: public
+  ingress: # separate ingress is necessary, one ingress object wont serve a second certificate (uses default instead)
+    enabled: true
+    annotations:
+      nginx.ingress.kubernetes.io/proxy-body-size: 50000m
+    hosts:
+      - "immortalis-files.de"
+    tls:
+      - secretName: immortalis-files-de
+        hosts:
+          - "immortalis-files.de"
+
+ingress:
+  enabled: true
+  annotations:
+    # kubernetes.io/tls-acme: "true"
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+    nginx.ingress.kubernetes.io/enable-cors: "true"
+    nginx.ingress.kubernetes.io/cors-allow-headers: "*"
+    nginx.ingress.kubernetes.io/cors-allow-origin: "*"
+    nginx.ingress.kubernetes.io/proxy-body-size: 5000m
+    #cert-manager.io/cluster-issuer: "letsencrypt"
+  className: nginx
+  tls:
+    - secretName: immortalis-de
+      hosts:
+        - immortalis.de
+  hosts:
+    - host: immortalis.de
+      paths:
+        - path: /(.*)
+          pathType: ImplementationSpecific
+          backend:
+            service:
+              name: "immortalis-client"
+              port: "80"
+        - path: /api/(.*)
+          pathType: ImplementationSpecific
+          backend:
+            service:
+              name: "immortalis-api"
+              port: "8080"
+
+imagePullSecrets: []
+
+serviceAccount:
+  annotations: {}
+
+podAnnotations: {}
+
+podSecurityContext: {}
+  # fsGroup: 2000
+
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}

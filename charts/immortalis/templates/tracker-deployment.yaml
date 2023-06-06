@@ -1,0 +1,91 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "immortalis.fullnametracker" . }}
+  labels:
+    {{- include "immortalis.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.tracker.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "immortalis.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "immortalis.trackerSelectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "immortalis.fullnametracker" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            {{- toYaml .Values.securityContext | nindent 12 }}
+          image: "{{ .Values.tracker.image.repository }}:{{ .Values.tracker.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.tracker.image.pullPolicy }}
+          env:
+            - name: DATABASE_URL
+              value: "postgres://{{ .Values.postgresql.auth.username }}:{{ .Values.postgresql.auth.password }}@immortalis-postgresql/{{ .Values.postgresql.auth.database }}"  # replace localhost with db if running in container
+            - name: FILE_STORAGE_LOCATION
+              value: "/downloads/"
+            - name: TEMP_FILE_STORAGE_LOCATION
+              value: "/temp-downloads/"
+            - name: SIMULATE_DOWNLOAD
+              value: "false"
+            - name: SIMULATED_DOWNLOAD_DURATION_SECONDS
+              value: "0"
+            - name: ARCHIVER_THREAD_COUNT
+              value: "1"
+            - name: ARCHIVER_ARCHIVING_TIMEOUT_SECONDS
+              value: "6000"
+            - name: ARCHIVER_ERROR_BACKOFF_SECONDS
+              value: "600"
+            - name: TRACKER_THREAD_COUNT
+              value: "1"
+            - name: USE_IPV6
+              value: "false"
+
+            - name: USE_S3
+              value: "true"
+            - name: S3_URL
+              value: "https://immortalis-files.de"
+            - name: S3_BUCKET_NAME
+              value: "immortalis"
+            - name: S3_ACCESS_KEY
+              value: "immortalis"
+            - name: S3_SECRET_KEY
+              value: "immortalis"
+          #ports:
+          #  - name: http
+          #    containerPort: 8080
+          #    protocol: TCP
+          #livenessProbe:
+          #  httpGet:
+          #    path: /health
+          #    port: http
+          #readinessProbe:
+          #  httpGet:
+          #    path: /health
+          #    port: http
+          resources:
+            {{- toYaml .Values.archiver.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
