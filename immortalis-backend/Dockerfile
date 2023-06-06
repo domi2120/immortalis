@@ -22,6 +22,13 @@ RUN apt update -y && \
 EXPOSE 8080
 CMD ["./immortalis-backend-api"]
 
+FROM ubuntu as immortalis-backend-common
+COPY --from=builder app/target/release/immortalis-backend-common ./immortalis-backend-common
+RUN apt update -y && \
+    apt install curl -y && \
+    apt install libpq5 -y
+EXPOSE 8080
+CMD ["./immortalis-backend-common"]
 
 FROM python:slim-bullseye as immortalis-Backend-archiver
 COPY --from=builder app/target/release/immortalis-backend-archiver ./immortalis-backend-archiver
