@@ -4,19 +4,41 @@ use diesel_migrations::{
 };
 use dotenvy::dotenv;
 use immortalis_backend_common::env_var_config::EnvVarConfig;
-use std::sync::Arc;
+use std::{sync::Arc, thread, time::Duration};
+use tracing::{error, info};
+
 
 // this will run the migrations, but it wont create the database if it doesn't exist already
-fn main() {
+fn main() -> Result<(),()> {
     dotenv().ok();
     let env_var_config = Arc::new(envy::from_env::<EnvVarConfig>().unwrap());
+    let subscriber = tracing_subscriber::FmtSubscriber::builder()
+        .with_max_level(tracing::Level::INFO)
+        .event_format(tracing_subscriber::fmt::format::json())
+        .finish();
 
-    let database_url = &env_var_config.database_url;
-    let mut connection = PgConnection::establish(database_url)
-        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url));
+    tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
-    const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
+    const MAX_ATTEMPTS: usize = 20;
+    const BACKOFF_DURATION_SECONDS: u64 = 10;
 
-    let mut harness = HarnessWithOutput::write_to_stdout(&mut connection);
-    println!("{:#?}", harness.run_pending_migrations(MIGRATIONS));
+    for _i in 0..MAX_ATTEMPTS {
+
+        let mut connection = match PgConnection::establish(&env_var_config.database_url) {
+            Ok(c) => c,
+            Err(e) => {
+                error!("Error connecting to Database, retrying in {} seconds. Error was: {}", BACKOFF_DURATION_SECONDS, e);
+                thread::sleep(Duration::from_secs(BACKOFF_DURATION_SECONDS));
+                continue;
+            }
+        };
+
+        const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
+
+        let mut harness = HarnessWithOutput::write_to_stdout(&mut connection);
+        info!("{:#?}", harness.run_pending_migrations(MIGRATIONS));
+        return Ok(());
+    }
+    error!("Stopped retrying after {} attempts with {} seconds between each", MAX_ATTEMPTS, BACKOFF_DURATION_SECONDS);
+    return Err(())
 }
