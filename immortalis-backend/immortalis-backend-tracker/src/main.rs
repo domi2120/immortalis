@@ -10,7 +10,7 @@ use diesel_async::scoped_futures::ScopedFutureExt;
 use diesel_async::{AsyncConnection, AsyncPgConnection, RunQueryDsl};
 use dotenvy::dotenv;
 use immortalis_backend_common::database_models::tracked_collection::TrackedCollection;
-use immortalis_backend_common::env_var_config::EnvVarConfig;
+use immortalis_backend_common::env_var_config::EnvVarConfigTracker;
 use immortalis_backend_common::schema::{scheduled_archivals, tracked_collections, videos};
 
 use serde_json::Value;
@@ -21,7 +21,7 @@ pub mod utilities;
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-    let env_var_config = Arc::new(envy::from_env::<EnvVarConfig>().unwrap());
+    let env_var_config = Arc::new(envy::from_env::<EnvVarConfigTracker>().unwrap());
 
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(tracing::Level::INFO)
@@ -31,7 +31,7 @@ async fn main() {
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
-        &env_var_config.database_url,
+        &env_var_config.general_config.database_url,
     );
     let application_connection_pool = Pool::builder(config).build().unwrap();
 

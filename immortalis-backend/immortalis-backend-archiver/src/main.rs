@@ -14,7 +14,7 @@ use immortalis_backend_common::database_models::file::File;
 use immortalis_backend_common::database_models::scheduled_archival::ScheduledArchival;
 use immortalis_backend_common::database_models::video::InsertableVideo;
 use immortalis_backend_common::database_models::video_status::VideoStatus;
-use immortalis_backend_common::env_var_config::EnvVarConfig;
+use immortalis_backend_common::env_var_config::EnvVarConfigArchiver;
 use immortalis_backend_common::schema::{files, scheduled_archivals, videos};
 use tokio::fs;
 use youtube_dl::YoutubeDl;
@@ -24,7 +24,7 @@ use tracing::{error, info, warn};
 #[tokio::main]
 async fn main() {
     dotenv().ok();
-    let env_var_config = Arc::new(envy::from_env::<EnvVarConfig>().unwrap());
+    let env_var_config = Arc::new(envy::from_env::<EnvVarConfigArchiver>().unwrap());
 
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(tracing::Level::INFO)
@@ -35,27 +35,27 @@ async fn main() {
 
     if !env_var_config.use_s3 {
         // ensure file_storage dir exists, if s3 isn't being used
-        fs::create_dir_all(env_var_config.file_storage_location.clone())
+        fs::create_dir_all(env_var_config.storage_config.file_storage_location.clone())
             .await
             .expect("could not create file_storage_location");
     }
 
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
-        &env_var_config.database_url,
+        &env_var_config.general_config.database_url,
     );
     let application_connection_pool = Pool::builder(config).build().unwrap();
 
     // This requires a running minio server at localhost:9000. If no s3 is configured this will not throw an error as long as the bucket isn't used
     let bucket = Arc::new(
         s3::Bucket::new(
-            &env_var_config.s3_bucket_name,
+            &env_var_config.storage_config.s3_bucket_name,
             s3::Region::Custom {
                 region: "eu-central-1".to_owned(),
-                endpoint: env_var_config.s3_url.to_owned(),
+                endpoint: env_var_config.storage_config.s3_internal_url.to_owned(),
             },
             s3::creds::Credentials::new(
-                Some(&env_var_config.s3_access_key),
-                Some(&env_var_config.s3_secret_key),
+                Some(&env_var_config.storage_config.s3_access_key),
+                Some(&env_var_config.storage_config.s3_secret_key),
                 None,
                 None,
                 None,
@@ -100,7 +100,7 @@ async fn main() {
 /// returns true if a video has been archived, returns false if there were no schedules or an error occured
 async fn archive(
     pool: Pool<AsyncPgConnection>,
-    env_var_config: Arc<EnvVarConfig>,
+    env_var_config: Arc<EnvVarConfigArchiver>,
     bucket: Arc<s3::Bucket>,
 ) -> bool {
     // try getting db connection, retry if it fails
@@ -174,7 +174,7 @@ async fn archive(
 
     let (thumbnail_id, thumbnail_extension, thumbnail_size) = download_image(
         &yt_dl_video.thumbnail.clone().unwrap(),
-        &env_var_config.file_storage_location,
+        &env_var_config.storage_config.file_storage_location,
         bucket.clone(),
         env_var_config.use_s3,
     )
@@ -229,8 +229,8 @@ async fn archive(
     if !env_var_config.simulate_download {
         file_size = download_video(
             &scheduled_archival.url,
-            &env_var_config.temp_file_storage_location,
-            &env_var_config.file_storage_location,
+            &env_var_config.storage_config.temp_file_storage_location,
+            &env_var_config.storage_config.file_storage_location,
             bucket.clone(),
             env_var_config.use_s3,
             &file_id,

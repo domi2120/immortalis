@@ -48,14 +48,10 @@ spec:
               value: "6000"
             - name: ARCHIVER_ERROR_BACKOFF_SECONDS
               value: "600"
-            - name: TRACKER_THREAD_COUNT
-              value: "1"
-            - name: USE_IPV6
-              value: "false"
 
             - name: USE_S3
               value: "true"
-            - name: S3_URL
+            - name: S3_INTERNAL_URL
               value: "http://{{ include "immortalis.fullname" . }}-minio.{{ .Release.Namespace }}.svc.cluster.local:9000"
             - name: S3_BUCKET_NAME
               value: {{ (first .Values.minio.buckets).name }}

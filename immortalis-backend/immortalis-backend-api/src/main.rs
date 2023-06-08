@@ -11,7 +11,7 @@ use immortalis_backend_common::database_models::tracked_collection::TrackedColle
 use immortalis_backend_common::database_models::{
     scheduled_archival::ScheduledArchival, video::Video,
 };
-use immortalis_backend_common::env_var_config::EnvVarConfig;
+use immortalis_backend_common::env_var_config::EnvVarConfigApi;
 use immortalis_backend_common::schema::{files, scheduled_archivals, tracked_collections, videos};
 
 use diesel::{insert_into, ExpressionMethods, SelectableHelper};
@@ -206,13 +206,13 @@ struct AppState {
     db_connection_pool: Pool<AsyncPgConnection>,
     file_storage_location: String,
     web_socket_connections: Arc<RwLock<HashMap<String, Addr<WebSocketActor>>>>,
-    env_var_config: Arc<EnvVarConfig>,
+    env_var_config: Arc<EnvVarConfigApi>,
     bucket: Arc<s3::Bucket>,
 }
 
 async fn distribute_postgres_events(app_state: web::Data<AppState>) {
     let pool = loop {
-        match sqlx::PgPool::connect(&app_state.env_var_config.database_url)
+        match sqlx::PgPool::connect(&app_state.env_var_config.general_config.database_url)
         .await
         {
             Ok(r) => break r,
@@ -318,8 +318,8 @@ struct WebSocketEvent<T> {
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
-    let env_var_config = Arc::new(envy::from_env::<EnvVarConfig>().unwrap());
-
+    let env_var_config = Arc::new(envy::from_env::<EnvVarConfigApi>().unwrap());
+    
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(tracing::Level::INFO)
         .event_format(tracing_subscriber::fmt::format::json())
@@ -328,21 +328,21 @@ async fn main() -> std::io::Result<()> {
     tracing::subscriber::set_global_default(subscriber).expect("setting default subscriber failed");
 
     let config = AsyncDieselConnectionManager::<diesel_async::AsyncPgConnection>::new(
-        &env_var_config.database_url,
+        &env_var_config.general_config.database_url,
     );
 
     let pool = Pool::builder(config).build().unwrap();
 
     let bucket = Arc::new(
         s3::Bucket::new(
-            &env_var_config.s3_bucket_name,
+            &env_var_config.storage_config.s3_bucket_name,
             s3::Region::Custom {
                 region: "eu-central-1".to_owned(),
-                endpoint: env_var_config.s3_url.to_owned(),
+                endpoint: env_var_config.storage_config.s3_external_url.to_owned(),
             },
             s3::creds::Credentials::new(
-                Some(&env_var_config.s3_access_key),
-                Some(&env_var_config.s3_secret_key),
+                Some(&env_var_config.storage_config.s3_access_key),
+                Some(&env_var_config.storage_config.s3_secret_key),
                 None,
                 None,
                 None,
@@ -355,7 +355,7 @@ async fn main() -> std::io::Result<()> {
 
     let app_state = web::Data::new(AppState {
         db_connection_pool: pool.clone(),
-        file_storage_location: env_var_config.file_storage_location.clone(),
+        file_storage_location: env_var_config.storage_config.file_storage_location.clone(),
         web_socket_connections: Arc::new(RwLock::new(HashMap::new())),
         env_var_config: env_var_config.clone(),
         bucket: bucket.clone(),

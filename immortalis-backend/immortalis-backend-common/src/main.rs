@@ -3,7 +3,7 @@ use diesel_migrations::{
     embed_migrations, EmbeddedMigrations, HarnessWithOutput, MigrationHarness,
 };
 use dotenvy::dotenv;
-use immortalis_backend_common::env_var_config::EnvVarConfig;
+use immortalis_backend_common::env_var_config::EnvVarConfigCommon;
 use std::{sync::Arc, thread, time::Duration};
 use tracing::{error, info};
 
@@ -11,7 +11,7 @@ use tracing::{error, info};
 // this will run the migrations, but it wont create the database if it doesn't exist already
 fn main() -> Result<(),()> {
     dotenv().ok();
-    let env_var_config = Arc::new(envy::from_env::<EnvVarConfig>().unwrap());
+    let env_var_config = Arc::new(envy::from_env::<EnvVarConfigCommon>().unwrap());
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(tracing::Level::INFO)
         .event_format(tracing_subscriber::fmt::format::json())
@@ -24,7 +24,7 @@ fn main() -> Result<(),()> {
 
     for _i in 0..MAX_ATTEMPTS {
 
-        let mut connection = match PgConnection::establish(&env_var_config.database_url) {
+        let mut connection = match PgConnection::establish(&env_var_config.general_config.database_url) {
             Ok(c) => c,
             Err(e) => {
                 error!("Error connecting to Database, retrying in {} seconds. Error was: {}", BACKOFF_DURATION_SECONDS, e);
