@@ -7,6 +7,6 @@ RUN npm install -g pnpm && \
     pnpm i && \
     pnpm run build
 
-FROM nginx AS runtime
+FROM nginx:mainline-alpine3.17-slim AS runtime  
 
 COPY --from=builder /immortalis-client/dist /usr/share/nginx/html
