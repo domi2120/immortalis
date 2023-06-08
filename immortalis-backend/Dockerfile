@@ -47,7 +47,6 @@ RUN apt update -y && \
     apt install curl -y && \
     apt install libpq5 -y && \
     curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /usr/local/bin/yt-dlp && \
-    chmod a+rx /usr/local/bin/yt-dlp && \
-    apt install ffmpeg -y
+    chmod a+rx /usr/local/bin/yt-dlp
 EXPOSE 8080
 CMD ["./immortalis-backend-tracker"]
