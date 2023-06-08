@@ -4,7 +4,7 @@
 
 	// List of extensions which should be recommended for users of this workspace.
 	"recommendations": [
-		"tamasfe.even-better-toml", "serayuzgur.crates", "dbaeumer.vscode-eslint", "dbaeumer.vscode-eslint", "webfreak.debug", "rust-lang.rust-analyzer", "Vue.volar", "vuetifyjs.vuetify-vscode"
+		"tamasfe.even-better-toml", "serayuzgur.crates", "dbaeumer.vscode-eslint", "dbaeumer.vscode-eslint", "webfreak.debug", "rust-lang.rust-analyzer", "Vue.volar", "vuetifyjs.vuetify-vscode", "github.vscode-github-actions"
 	],
 	// List of extensions recommended by VS Code that should not be recommended for users of this workspace.
 	"unwantedRecommendations": [
