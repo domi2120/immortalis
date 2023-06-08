@@ -85,7 +85,7 @@ minio:
   ingress: # separate ingress is necessary, one ingress object wont serve a second certificate (uses default instead)
     enabled: true
     annotations:
-      nginx.ingress.kubernetes.io/proxy-body-size: 50000m
+      nginx.ingress.kubernetes.io/proxy-body-size: "0"
     hosts:
       - "immortalis-files.de"
     tls:
@@ -101,7 +101,6 @@ ingress:
     nginx.ingress.kubernetes.io/enable-cors: "true"
     nginx.ingress.kubernetes.io/cors-allow-headers: "*"
     nginx.ingress.kubernetes.io/cors-allow-origin: "*"
-    nginx.ingress.kubernetes.io/proxy-body-size: 5000m
     #cert-manager.io/cluster-issuer: "letsencrypt"
   className: nginx
   tls:
