@@ -45,5 +45,5 @@ fn main() -> Result<(), ()> {
         "Stopped retrying after {} attempts with {} seconds between each",
         MAX_ATTEMPTS, BACKOFF_DURATION_SECONDS
     );
-    return Err(());
+    Err(())
 }

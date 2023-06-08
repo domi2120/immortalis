@@ -431,7 +431,7 @@ async fn download_image(
         // https://github.com/rust-lang/rust/issues/77143
         fs::write(
             file_storage_location.to_string()
-                + (&thumbnail_id.to_string()).as_str()
+                + thumbnail_id.to_string().as_str()
                 + "."
                 + thumbnail_extension,
             &resp,

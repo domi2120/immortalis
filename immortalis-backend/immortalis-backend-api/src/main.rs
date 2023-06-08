@@ -164,8 +164,7 @@ async fn get_file(
             format!(
                 "attachment; filename=\"{}.{}\"",
                 f.file_name, &f.file_extension
-            )
-            .into(),
+            ),
         );
         let presign = app_state
             .bucket
