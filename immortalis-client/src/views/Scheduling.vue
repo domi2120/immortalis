@@ -1,11 +1,11 @@
 <template>
     <v-container class="ma-10">
-      <div class="text-center text-h4 d-flex justify-center"> Scheduling </div>
+      <div class="text-center text-h4 d-flex justify-center"> {{ $t('navigation.schedules') }} </div>
       
       <v-spacer></v-spacer>
       <v-col :cols="6" sm=12 class="d-flex flex-column mt-15 mb-15">
-        <v-text-field :label="'Url'" class="mt-10 w-50 d-flex flex-column align-self-center" v-model="url" ></v-text-field>
-        <v-btn class="w-50 d-flex flex-column align-self-center" @click="schedule">Schedule</v-btn>
+        <v-text-field :label="$t('scheduleView.address')" class="mt-10 w-50 d-flex flex-column align-self-center" v-model="url" ></v-text-field>
+        <v-btn class="w-50 d-flex flex-column align-self-center" @click="schedule">{{ $t('scheduleView.schedule') }}</v-btn>
       </v-col>
 
       <v-data-table
@@ -34,25 +34,26 @@ import Notyf from '@/notification';
 import { WebSocketEvent } from '@/models/webSocketEvent';
 import { DataChangeEvent } from '@/models/dataChangeEvent';
 import { emitter } from '@/eventService';
+import { useI18n } from 'vue-i18n';
 
 const url: Ref<string> = ref("");
   
 const headers = ref(
   [
     {
-      title: 'Url',
+      title: useI18n().t('scheduleView.address'),
       value: 'url',
       align: 'start',
       //sortable: 'true'
     },
     {
-      title: 'ScheduledAt',
+      title: useI18n().t('scheduleView.scheduledAt'),
       value: 'scheduledAt',
       key: 'scheduledAt',
       align: 'start'
     },
     {
-      title: 'Waiting untill',
+      title: useI18n().t('scheduleView.waitingUntil'),
       value: 'notBefore',
       key: 'notBefore',
       align: 'start'
@@ -66,7 +67,7 @@ onMounted(async () => {
   try {
     schedules.value = await (await fetch("/api/schedule")).json();
   } catch (e) {
-    new Notyf().error("Could not reach Server");
+    new Notyf().error(useI18n().t("error.serverNotAvailable"));
   }
 })
 
@@ -101,7 +102,7 @@ async function schedule() {
       }
     }
   );
-  response.ok ? new Notyf().success(`scheduled ${url.value}`) : new Notyf().error(`is already scheduled or archived ${url.value}`)
+  response.ok ? new Notyf().success(`scheduled ${url.value}`) : new Notyf().error(useI18n().t(`error.alreadyScheduled`, [url.value]))
   url.value = "";
 }
 </script>
