@@ -73,8 +73,8 @@ minio:
   persistence:
     enabled: false
   mode: standalone
-  rootUser: root
-  rootPassword: root
+  rootUser: minio123
+  rootPassword: minio123
   users:
     - accessKey: immortalis
       secretKey: immortalis
