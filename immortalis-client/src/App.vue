@@ -4,15 +4,15 @@
       <v-app-bar>
         <v-app-bar-nav-icon @click="drawerOpened= !drawerOpened" />
         <v-toolbar-title style="cursor: pointer" @click="$router.push({path: '/', query: { t: Date.now()}})">Immortalis</v-toolbar-title>
-        <v-text-field label="Search" append-inner-icon="mdi-magnify" v-model="searchText" clearable class="w-50 mt-5 h-80" @keydown.enter="$router.push({ path: '/search', query: {searchText: searchText, t: Date.now()}})">
+        <v-text-field :label="$t('search')" append-inner-icon="mdi-magnify" v-model="searchText" clearable class="w-50 mt-5 h-80" @keydown.enter="$router.push({ path: '/search', query: {searchText: searchText, t: Date.now()}})">
         </v-text-field>
         <v-spacer></v-spacer>
       </v-app-bar>
       <v-navigation-drawer v-model="drawerOpened" permanent>
         <v-list nav :mandatory="true">
-          <v-list-item :value="'Home'" :title="'Home'" @click="$router.push({path: '/', query: { t: Date.now()}})"/>
-          <v-list-item :value="'Scheduling'" :title="'Scheduling'" @click="$router.push('/scheduling')"/>
-          <v-list-item :value="'TrackedCollection'" :title="'Tracked Collections'" @click="$router.push('/tracked-collections')"/>
+          <v-list-item :value="'Home'" :title="$t('navigation.home')" @click="$router.push({path: '/', query: { t: Date.now()}})"/>
+          <v-list-item :value="'Scheduling'" :title="$t('navigation.schedules')" @click="$router.push('/scheduling')"/>
+          <v-list-item :value="'TrackedCollection'" :title="$t('navigation.trackedCollections')" @click="$router.push('/tracked-collections')"/>
         </v-list>
       </v-navigation-drawer>
       <router-view :key="$route.fullPath"></router-view>
@@ -38,7 +38,7 @@ onMounted(async () => {
   await router.isReady();
   router.afterEach(() => searchText.value = router.currentRoute.value.query.searchText?.toString() || "");
   searchText.value = router.currentRoute.value.query.searchText?.toString() || "";
-    
+
   connectWebsocket();
   webSocketReconnectInterval = setInterval(() => {
     if (webSocket.readyState === webSocket.CLOSED) {

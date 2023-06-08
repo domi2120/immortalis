@@ -1,5 +1,10 @@
 export const messages = {
   en: {
-    "search": "Search"
+    "search": "Search",
+    navigation: {
+      "home": "Home",
+      "schedules": "Planned archivals",
+      "trackedCollections": "Tracked Playlists/Channels"
+    }
   }
 };
