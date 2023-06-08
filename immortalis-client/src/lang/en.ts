@@ -6,7 +6,7 @@ export const messages = {
       "alreadyScheduled": "The Url {0} is already archived, or scheduled for archival"
     },
     scheduleView: {
-      "address": "address",
+      "address": "Address",
       "scheduledAt": "Scheduled at",
       "waitingUntil": "Execution planned at",
       "schedule": "Schedule",
