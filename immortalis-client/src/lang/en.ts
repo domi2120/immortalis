@@ -11,6 +11,12 @@ export const messages = {
       "waitingUntil": "Execution planned at",
       "schedule": "Schedule",
     },
+    trackedCollectionsView: {
+      "address": "Address",
+      "track": "Track",
+      "startedTrackingAt": "Started tracking at",
+      "lastCheckedAt": "last checked at"
+    },
     navigation: {
       "home": "Home",
       "schedules": "Planned archivals",

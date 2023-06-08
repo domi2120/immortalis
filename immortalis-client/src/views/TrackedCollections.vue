@@ -1,11 +1,11 @@
 <template>
     <v-container class="ma-10">
-      <div class="text-center text-h4 d-flex justify-center"> Tracked collections </div>
+      <div class="text-center text-h4 d-flex justify-center">{{ $t('navigation.trackedCollections') }}</div>
     
       <v-spacer></v-spacer>
       <v-col :cols="6" sm=12 class="d-flex flex-column mt-15 mb-15">
-        <v-text-field :label="'Url'" class="mt-10 w-50 d-flex flex-column align-self-center" v-model="url" ></v-text-field>
-        <v-btn class="w-50 d-flex flex-column align-self-center" @click="track">Start tracking</v-btn>
+        <v-text-field :label="$t('address')" class="mt-10 w-50 d-flex flex-column align-self-center" v-model="url" ></v-text-field>
+        <v-btn class="w-50 d-flex flex-column align-self-center" @click="track">{{ $t('track') }}</v-btn>
       </v-col>
 
       <v-data-table
@@ -34,26 +34,27 @@ import { onUnmounted } from 'vue';
 import { Ref, ref } from 'vue';
 import { emitter } from '@/eventService';
 import { Notyf } from 'notyf';
+import { useI18n } from 'vue-i18n';
 
 const url: Ref<string> = ref("");
   
 const headers = ref(
   [
     {
-      title: 'Url',
+      title: useI18n().t('trackedCollectionsView.address'),
       value: 'url', // name of the property from which the value is drawn
       key: 'url', // key of the column, essential for custom slots
       align: 'start',
       //sortable: 'true'
     },
     {
-      title: 'Started tracking at',
+      title:  useI18n().t("trackedCollectionsView.startedTrackingAt"),
       value: 'trackingStartedAt',
       key: 'trackingStartedAt',
       align: 'start'
     },
     {
-      title: 'Last Checked at',
+      title:  useI18n().t("trackedCollectionsView.lastCheckedAt"),
       value: 'lastChecked',
       key: 'lastChecked',
       align: 'start'
@@ -68,7 +69,7 @@ onMounted(async () => {
   try {
     schedules.value = await (await fetch("/api/tracked_collection")).json();
   } catch (e) {
-    new Notyf().error("Could not reach Server");
+    new Notyf().error(useI18n().t("error.serverNotAvailable"));
   }
 })
 

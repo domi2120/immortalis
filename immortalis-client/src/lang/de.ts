@@ -6,10 +6,16 @@ export const messages = {
       "alreadyScheduled": "Die Addresse {0} wurde bereits archiviert oder wurde bereits zur Archivierung geplant"
     },
     scheduleView: {
-      "address": "Addresse",
+      "address": "Adresse",
       "scheduledAt": "Geplant am",
       "waitingUntil": "Ausführung am",
       "schedule": "Planen",
+    },
+    trackedCollectionsView: {
+      "address": "Adresse",
+      "track": "Verfolgen",
+      "startedTrackingAt": "Verfolgt seit",
+      "lastCheckedAt": "Zuletzt geprüft am"
     },
     navigation: {
       "home": "Zuhause",
