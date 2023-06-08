@@ -9,26 +9,16 @@ import { loadFonts } from './webfontloader'
 import vuetify from './vuetify'
 import pinia from '../store'
 import router from '../router'
+import { createI18n } from 'vue-i18n';
+import { messages } from '@/lang/en'; // Translations
 
 // Types
 import type { App } from 'vue'
 
-import { createI18n } from 'vue-i18n';
-
 const i18n = createI18n({
-  locale: navigator.language, // set locale
+  locale: navigator.language.slice(0,2), // set locale
   fallbackLocale: 'en', // set fallback locale
-  messages: {
-    en: {
-      "search": "Search"
-    },
-    ja: {
-      "search": "探す"
-    },
-    de: {
-      "search": "Suchen"
-    }
-  }
+  messages: {...messages, ...(await import(`@/lang/${navigator.language.slice(0, 2)}.ts`)).messages} // dynamically load the users language in addition to english which is the fallback language
 })
 
 export function registerPlugins (app: App) {
