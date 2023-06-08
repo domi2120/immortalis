@@ -104,7 +104,6 @@ async fn dequeue(
 
 /// returns true if a tracked_collection has been processed, returns false if there were no due tracked_collections or an error occured
 async fn track(pool: Pool<AsyncPgConnection>) -> bool {
-    
     // try getting db connection, retry if it fails
     let db_connection = &mut loop {
         match pool.get().await {
@@ -113,10 +112,10 @@ async fn track(pool: Pool<AsyncPgConnection>) -> bool {
                 error!("Encountered Database error: {}", e);
                 tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                 continue;
-            },
+            }
         }
     };
-    
+
     let tracked_collection = match dequeue(db_connection, 600).await {
         Ok(x) => match x {
             Some(scheduled_archival) => {

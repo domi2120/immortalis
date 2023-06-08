@@ -111,7 +111,7 @@ async fn archive(
                 error!("Encountered Database error: {}", e);
                 tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
                 continue;
-            },
+            }
         }
     };
 
@@ -361,7 +361,6 @@ async fn dequeue(
     db_connection
         .transaction::<Option<ScheduledArchival>, diesel::result::Error, _>(|db_connection| {
             async move {
-
                 let result = scheduled_archivals::table
                     .limit(1)
                     .filter(scheduled_archivals::not_before.lt(chrono::Utc::now()))

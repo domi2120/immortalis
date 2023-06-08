@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use websocket_actor::WebSocketActor;
 
 use dotenvy::dotenv;
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 
 use crate::websocket_actor::Message;
 pub mod request_models;
@@ -212,9 +212,7 @@ struct AppState {
 
 async fn distribute_postgres_events(app_state: web::Data<AppState>) {
     let pool = loop {
-        match sqlx::PgPool::connect(&app_state.env_var_config.general_config.database_url)
-        .await
-        {
+        match sqlx::PgPool::connect(&app_state.env_var_config.general_config.database_url).await {
             Ok(r) => break r,
             Err(e) => {
                 error!("Encountered Database error: {}", e);
@@ -223,7 +221,6 @@ async fn distribute_postgres_events(app_state: web::Data<AppState>) {
             }
         }
     };
-        
 
     let mut listener = sqlx::postgres::PgListener::connect_with(&pool)
         .await
@@ -319,7 +316,7 @@ async fn main() -> std::io::Result<()> {
     dotenv().ok();
 
     let env_var_config = Arc::new(envy::from_env::<EnvVarConfigApi>().unwrap());
-    
+
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
         .with_max_level(tracing::Level::INFO)
         .event_format(tracing_subscriber::fmt::format::json())

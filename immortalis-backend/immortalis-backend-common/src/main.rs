@@ -7,9 +7,8 @@ use immortalis_backend_common::env_var_config::EnvVarConfigCommon;
 use std::{sync::Arc, thread, time::Duration};
 use tracing::{error, info};
 
-
 // this will run the migrations, but it wont create the database if it doesn't exist already
-fn main() -> Result<(),()> {
+fn main() -> Result<(), ()> {
     dotenv().ok();
     let env_var_config = Arc::new(envy::from_env::<EnvVarConfigCommon>().unwrap());
     let subscriber = tracing_subscriber::FmtSubscriber::builder()
@@ -23,15 +22,18 @@ fn main() -> Result<(),()> {
     const BACKOFF_DURATION_SECONDS: u64 = 10;
 
     for _i in 0..MAX_ATTEMPTS {
-
-        let mut connection = match PgConnection::establish(&env_var_config.general_config.database_url) {
-            Ok(c) => c,
-            Err(e) => {
-                error!("Error connecting to Database, retrying in {} seconds. Error was: {}", BACKOFF_DURATION_SECONDS, e);
-                thread::sleep(Duration::from_secs(BACKOFF_DURATION_SECONDS));
-                continue;
-            }
-        };
+        let mut connection =
+            match PgConnection::establish(&env_var_config.general_config.database_url) {
+                Ok(c) => c,
+                Err(e) => {
+                    error!(
+                        "Error connecting to Database, retrying in {} seconds. Error was: {}",
+                        BACKOFF_DURATION_SECONDS, e
+                    );
+                    thread::sleep(Duration::from_secs(BACKOFF_DURATION_SECONDS));
+                    continue;
+                }
+            };
 
         const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
@@ -39,6 +41,9 @@ fn main() -> Result<(),()> {
         info!("{:#?}", harness.run_pending_migrations(MIGRATIONS));
         return Ok(());
     }
-    error!("Stopped retrying after {} attempts with {} seconds between each", MAX_ATTEMPTS, BACKOFF_DURATION_SECONDS);
-    return Err(())
+    error!(
+        "Stopped retrying after {} attempts with {} seconds between each",
+        MAX_ATTEMPTS, BACKOFF_DURATION_SECONDS
+    );
+    return Err(());
 }

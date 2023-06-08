@@ -7,10 +7,9 @@ pub struct EnvVarConfigGeneral {
 
 #[derive(Deserialize, Debug)]
 pub struct StorageConfig {
-
     pub file_storage_location: String,
     pub temp_file_storage_location: String,
-    
+
     // s3 credentials, need to be optional (either s3, or disk storage must exist)
     #[serde(default)]
     pub s3_internal_url: String, // used to store data
@@ -62,5 +61,5 @@ pub struct EnvVarConfigTracker {
 #[derive(Deserialize, Debug)]
 pub struct EnvVarConfigCommon {
     #[serde(flatten)]
-    pub general_config: EnvVarConfigGeneral
+    pub general_config: EnvVarConfigGeneral,
 }
