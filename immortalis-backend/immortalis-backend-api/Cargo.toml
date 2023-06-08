@@ -28,6 +28,7 @@ actix-web-actors = "4.2.0"
 actix = { version = "0.13.0", features = ["macros"] }
 envy = "0.4"
 rust-s3 = "0.33"
+tokio = "*"
 
 [dependencies.openssl]
 features = ["vendored"]

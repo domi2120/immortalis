@@ -23,7 +23,7 @@ use serde::{Deserialize, Serialize};
 use websocket_actor::WebSocketActor;
 
 use dotenvy::dotenv;
-use tracing::{info, warn};
+use tracing::{info, warn, error};
 
 use crate::websocket_actor::Message;
 pub mod request_models;
@@ -211,9 +211,19 @@ struct AppState {
 }
 
 async fn distribute_postgres_events(app_state: web::Data<AppState>) {
-    let pool = sqlx::PgPool::connect(&app_state.env_var_config.database_url)
+    let pool = loop {
+        match sqlx::PgPool::connect(&app_state.env_var_config.database_url)
         .await
-        .unwrap();
+        {
+            Ok(r) => break r,
+            Err(e) => {
+                error!("Encountered Database error: {}", e);
+                tokio::time::sleep(tokio::time::Duration::from_secs(5)).await;
+                continue;
+            }
+        }
+    };
+        
 
     let mut listener = sqlx::postgres::PgListener::connect_with(&pool)
         .await
