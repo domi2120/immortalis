@@ -17,6 +17,7 @@ import type { App } from 'vue'
 
 const i18n = createI18n({
   locale: navigator.language.slice(0,2), // set locale
+  legacy: false,
   fallbackLocale: 'en', // set fallback locale
   messages: {...messages, ...(await import(`@/lang/${navigator.language.slice(0, 2)}.ts`)).messages} // dynamically load the users language in addition to english which is the fallback language
 })
