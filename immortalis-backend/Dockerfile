@@ -13,8 +13,7 @@ RUN cargo chef cook --release --recipe-path recipe.json
 COPY . .
 RUN cargo build --release
 
-
-FROM ubuntu as immortalis-backend-api
+FROM debian:stable-slim as immortalis-backend-api
 COPY --from=builder app/target/release/immortalis-backend-api ./immortalis-backend-api
 RUN apt update -y && \
     apt install curl -y && \
@@ -22,7 +21,7 @@ RUN apt update -y && \
 EXPOSE 8080
 CMD ["./immortalis-backend-api"]
 
-FROM ubuntu as immortalis-backend-common
+FROM debian:stable-slim as immortalis-backend-common
 COPY --from=builder app/target/release/immortalis-backend-common ./immortalis-backend-common
 RUN apt update -y && \
     apt install curl -y && \
