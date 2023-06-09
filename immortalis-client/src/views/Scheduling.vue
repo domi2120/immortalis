@@ -104,7 +104,7 @@ async function schedule() {
       }
     }
   );
-  response.ok ? new Notyf().success(`scheduled ${url.value}`) : new Notyf().error(i18n.t(`error.alreadyScheduled`, [url.value]))
+  response.ok ? new Notyf().success(i18n.t('scheduleView.success.scheduled', [url.value])) : new Notyf().error(i18n.t(`scheduleView.error.alreadyScheduled`, [url.value]))
   url.value = "";
 }
 </script>

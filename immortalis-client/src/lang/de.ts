@@ -5,6 +5,10 @@ export const messages = {
       "serverNotAvailable": "Der Server konnte nicht erreich werden",
       "alreadyScheduled": "Die Addresse {0} wurde bereits archiviert oder wurde bereits zur Archivierung geplant"
     },
+    success: {
+      "scheduled": "Die Archivierung der Adresse {0} wurde geplant",
+      "tracked": "Die Adresse {0} wird nun verfolgt",
+    },
     scheduleView: {
       "address": "Adresse",
       "scheduledAt": "Geplant am",

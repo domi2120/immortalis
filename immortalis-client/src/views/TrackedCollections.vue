@@ -94,7 +94,7 @@ onUnmounted(async () => {
 })
   
 async function track() {
-  await fetch("/api/tracked_collection",
+  let response = await fetch("/api/tracked_collection",
     {
       method: "POST",
       body: JSON.stringify(
@@ -106,6 +106,7 @@ async function track() {
       }
     }
   );
+  response.ok ? new Notyf().success(i18n.t('trackedCollectionsView.success.trackedCollectionAdded', [url.value])) : new Notyf().error(i18n.t(`trackedCollectionsView.error.alreadyTracked`, [url.value]))
   url.value = "";
 }
 

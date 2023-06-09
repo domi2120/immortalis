@@ -5,17 +5,33 @@ export const messages = {
       "serverNotAvailable": "The Server could not be reached",
       "alreadyScheduled": "The Url {0} is already archived, or scheduled for archival"
     },
+    success: {
+      "scheduled": "The Url {0} has been scheduled for archival",
+      "tracked": "The Url {0} is now being tracked",
+    },
     scheduleView: {
       "address": "Address",
       "scheduledAt": "Scheduled at",
       "waitingUntil": "Execution planned at",
       "schedule": "Schedule",
+      error: {
+        "alreadyScheduled": "The Url {0} is already archived, or scheduled for archival"
+      },
+      success: {
+        "scheduled": "The Url {0} has been scheduled for archival",
+      },
     },
     trackedCollectionsView: {
       "address": "Address",
       "track": "Track",
       "startedTrackingAt": "Started tracking at",
-      "lastCheckedAt": "last checked at"
+      "lastCheckedAt": "last checked at",
+      error: {
+        "alreadyTracked": "The Url {0} is already being tracked"
+      },
+      success: {
+        "tracked": "The Url {0} is now being tracked",
+      },
     },
     navigation: {
       "home": "Home",
