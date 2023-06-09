@@ -18,6 +18,9 @@ export default defineConfig({
     }),
   ],
   define: { 'process.env': {} },
+  build: {
+    target: 'esnext',
+  },
   resolve: {
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))

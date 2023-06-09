@@ -11,7 +11,7 @@
           <v-col :cols="4">
             <h2 >{{ props.video.value.title }}</h2>
             {{ props.video.value.channel }} <br>
-            {{ $n(props.video.value.views) }} {{ $t('videoEntryComponent.views')}} · {{ $t('videoEntryComponent.uploadedAt')}}: {{ new Date(props.video.value.uploadDate).toLocaleDateString() }} · {{ $t('videoEntryComponent.archivedAt') }}: {{ new Date(props.video.value.archivedDate).toLocaleDateString() }} <br>
+            {{ $n(props.video.value.views) }} {{ $t('videoEntryComponent.views')}} · {{ $t('videoEntryComponent.uploadedAt')}}: {{ $d(new Date(props.video.value.uploadDate)) }} · {{ $t('videoEntryComponent.archivedAt') }}: {{ $d(new Date(props.video.value.archivedDate)) }} <br>
             <v-btn :href="'/api/file?is_thumbnail=false&file_id=' + encodeURI(props.video.value.fileId )" :disabled="props.video.value.status != 'Archived'" >{{ $t('videoEntryComponent.download') }}</v-btn>
             <v-btn :href="props.video.value.originalUrl" class="ma-2">{{ $t('videoEntryComponent.watchOriginal') }}</v-btn>
             <v-chip>{{ $t('videoEntryComponent.status.' + props.video.value.status) }}</v-chip>
