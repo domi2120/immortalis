@@ -13,13 +13,15 @@ import VideoEntry from '@/components/VideoEntry.vue';
 import Notyf from '@/notification';
 import { useI18n } from 'vue-i18n';
 
+const i18n = useI18n();
+
 let videos: Ref<Video[]> = ref([]);
 
 const search = async () => {
   try {
     videos.value = await (await fetch("api/search?" + new URLSearchParams({term: ""}))).json();
   } catch (e) {
-    new Notyf().error(useI18n().t("error.serverNotAvailable"));
+    new Notyf().error(i18n.t("error.serverNotAvailable"));
   }
 }
 

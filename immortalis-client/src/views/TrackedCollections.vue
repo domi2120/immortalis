@@ -36,25 +36,27 @@ import { emitter } from '@/eventService';
 import { Notyf } from 'notyf';
 import { useI18n } from 'vue-i18n';
 
+const i18n = useI18n();
+
 const url: Ref<string> = ref("");
   
 const headers = ref(
   [
     {
-      title: useI18n().t('trackedCollectionsView.address'),
+      title: i18n.t('trackedCollectionsView.address'),
       value: 'url', // name of the property from which the value is drawn
       key: 'url', // key of the column, essential for custom slots
       align: 'start',
       //sortable: 'true'
     },
     {
-      title:  useI18n().t("trackedCollectionsView.startedTrackingAt"),
+      title:  i18n.t("trackedCollectionsView.startedTrackingAt"),
       value: 'trackingStartedAt',
       key: 'trackingStartedAt',
       align: 'start'
     },
     {
-      title:  useI18n().t("trackedCollectionsView.lastCheckedAt"),
+      title:  i18n.t("trackedCollectionsView.lastCheckedAt"),
       value: 'lastChecked',
       key: 'lastChecked',
       align: 'start'
@@ -69,7 +71,7 @@ onMounted(async () => {
   try {
     schedules.value = await (await fetch("/api/tracked_collection")).json();
   } catch (e) {
-    new Notyf().error(useI18n().t("error.serverNotAvailable"));
+    new Notyf().error(i18n.t("error.serverNotAvailable"));
   }
 })
 

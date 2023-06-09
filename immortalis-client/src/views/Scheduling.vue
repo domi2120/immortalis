@@ -36,24 +36,26 @@ import { DataChangeEvent } from '@/models/dataChangeEvent';
 import { emitter } from '@/eventService';
 import { useI18n } from 'vue-i18n';
 
+const i18n = useI18n();
+
 const url: Ref<string> = ref("");
-  
+
 const headers = ref(
   [
     {
-      title: useI18n().t('scheduleView.address'),
+      title: i18n.t('scheduleView.address'),
       value: 'url',
       align: 'start',
       //sortable: 'true'
     },
     {
-      title: useI18n().t('scheduleView.scheduledAt'),
+      title: i18n.t('scheduleView.scheduledAt'),
       value: 'scheduledAt',
       key: 'scheduledAt',
       align: 'start'
     },
     {
-      title: useI18n().t('scheduleView.waitingUntil'),
+      title: i18n.t('scheduleView.waitingUntil'),
       value: 'notBefore',
       key: 'notBefore',
       align: 'start'
@@ -67,7 +69,7 @@ onMounted(async () => {
   try {
     schedules.value = await (await fetch("/api/schedule")).json();
   } catch (e) {
-    new Notyf().error(useI18n().t("error.serverNotAvailable"));
+    new Notyf().error(i18n.t("error.serverNotAvailable"));
   }
 })
 
@@ -102,7 +104,7 @@ async function schedule() {
       }
     }
   );
-  response.ok ? new Notyf().success(`scheduled ${url.value}`) : new Notyf().error(useI18n().t(`error.alreadyScheduled`, [url.value]))
+  response.ok ? new Notyf().success(`scheduled ${url.value}`) : new Notyf().error(i18n.t(`error.alreadyScheduled`, [url.value]))
   url.value = "";
 }
 </script>
