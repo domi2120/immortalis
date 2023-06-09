@@ -6,7 +6,7 @@ Immortalis is a youtube archiver using [yt-dlp](https://github.com/yt-dlp/yt-dlp
 
 ### Installation:
 #### Kubernetes:
-* Run the following from the Repo root to install via helm `helm upgrade --install immortalis ./charts/immortalis`. This will by default also create an instance of [minio](https://github.com/minio/minio/tree/master/helm/minio) and [postgresl](https://github.com/bitnami/charts/tree/main/bitnami/postgresql)
+* Run the following from the Repo root to install via helm `helm upgrade --install immortalis ./charts/immortalis`. This will by default also create an instance of [minio](https://github.com/minio/minio/tree/master/helm/minio) and [postgresql](https://github.com/bitnami/charts/tree/main/bitnami/postgresql). It is strongly recommended to override the credentials with something more secure than the default value.
 
 ## Development
 ### Getting Started
