@@ -36,6 +36,8 @@ jobs:
         tags: ${{ steps.client-meta.outputs.tags }}
         labels: ${{ steps.client-meta.outputs.labels }}
         context: "./immortalis-client"
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
   build-backend:
     runs-on: ubuntu-latest
     steps:
@@ -57,6 +59,8 @@ jobs:
         labels: ${{ steps.api-meta.outputs.labels }}
         context: "./immortalis-backend"
         target: immortalis-backend-api
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
     - name: Extract metadata (tags, labels) for Docker immortalis-backend-archiver
       id: archiver-meta
@@ -71,6 +75,8 @@ jobs:
         labels: ${{ steps.archiver-meta.outputs.labels }}
         context: "./immortalis-backend"
         target: immortalis-backend-archiver
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
     - name: Extract metadata (tags, labels) for Docker immortalis-backend-tracker
       id: tracker-meta
@@ -85,6 +91,8 @@ jobs:
         labels: ${{ steps.tracker-meta.outputs.labels }}
         context: "./immortalis-backend"
         target: immortalis-backend-tracker
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
 
     - name: Extract metadata (tags, labels) for Docker immortalis-backend-common
       id: common-meta
@@ -99,3 +107,5 @@ jobs:
         labels: ${{ steps.common-meta.outputs.labels }}
         context: "./immortalis-backend"
         target: immortalis-backend-common
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
