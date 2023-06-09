@@ -11,10 +11,10 @@
           <v-col :cols="4">
             <h2 >{{ props.video.value.title }}</h2>
             {{ props.video.value.channel }} <br>
-            {{ numberToDelimetedString(props.video.value.views, ",") }} views · uploaded: {{ new Date(props.video.value.uploadDate).toLocaleDateString() }} · archived: {{ new Date(props.video.value.archivedDate).toLocaleDateString() }} <br>
-            <v-btn :href="'/api/file?is_thumbnail=false&file_id=' + encodeURI(props.video.value.fileId )" :disabled="props.video.value.status != 'Archived'" >Download</v-btn>
-            <v-btn :href="props.video.value.originalUrl" class="ma-2">Watch Original</v-btn>
-            <v-chip>{{ props.video.value.status }}</v-chip>
+            {{ $n(props.video.value.views) }} {{ $t('videoEntryComponent.views')}} · {{ $t('videoEntryComponent.uploadedAt')}}: {{ new Date(props.video.value.uploadDate).toLocaleDateString() }} · {{ $t('videoEntryComponent.archivedAt') }}: {{ new Date(props.video.value.archivedDate).toLocaleDateString() }} <br>
+            <v-btn :href="'/api/file?is_thumbnail=false&file_id=' + encodeURI(props.video.value.fileId )" :disabled="props.video.value.status != 'Archived'" >{{ $t('videoEntryComponent.download') }}</v-btn>
+            <v-btn :href="props.video.value.originalUrl" class="ma-2">{{ $t('videoEntryComponent.watchOriginal') }}</v-btn>
+            <v-chip>{{ $t('videoEntryComponent.status.' + props.video.value.status) }}</v-chip>
             <v-chip>{{ prettyBytes(props.video.value.videoSize) }}</v-chip>
           </v-col>
         <v-spacer></v-spacer>
@@ -32,10 +32,5 @@ const props = defineProps<
       video: Ref<Video>
   }
 >();
-
-function numberToDelimetedString(x: number, delimeter: string) {
-  return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, delimeter);
-}
-
 </script>
   

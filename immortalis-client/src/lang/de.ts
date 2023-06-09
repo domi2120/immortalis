@@ -21,6 +21,17 @@ export const messages = {
       "home": "Zuhause",
       "schedules": "Geplante Archivierungen",
       "trackedCollections": "Verfolgte Playlists/Kanäle"
+    },
+    videoEntryComponent: {
+      "download": "Herunterladen",
+      "watchOriginal": "Original ansehen",
+      "uploadedAt": "Hochgeladen",
+      "archivedAt": "Archiviert",
+      "views": "Aufrufe",
+      status: {
+        "Archived": "Archiviert",
+        "beingArchived": "Wird archiviert"
+      },
     }
   }
 }
