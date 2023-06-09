@@ -3,7 +3,9 @@ name: Publish
 on:
   push:
     tags: '*.*.*'
-  
+
+env:
+  REGISTRY: ghcr.io
 
 jobs:
   build-client:
@@ -13,11 +15,26 @@ jobs:
     - uses: actions/checkout@v3
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
+
+    - name: Log in to the Container registry
+      uses: docker/login-action@v2
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+  
+    - name: Extract metadata (tags, labels) for Docker
+      id: client-meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ env.REGISTRY }}/immortalis/immortalis-client
+
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
         #push: true
-        tags: ${{ secrets.REGISTRY_URL }}/immortalis/immortalis-client:${{ env.CI_REF_NAME }}
+        tags: ${{ steps.client-meta.outputs.tags }}
+        labels: ${{ steps.client-meta.outputs.labels }}
         context: "./immortalis-client"
   build-backend:
     runs-on: ubuntu-latest
@@ -26,31 +43,59 @@ jobs:
     - uses: actions/checkout@v3
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
+
+    - name: Extract metadata (tags, labels) for Docker immortalis-backend-api
+      id: api-meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ env.REGISTRY }}/immortalis/immortalis-backend-api
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
         #push: true
-        tags: ${{ secrets.REGISTRY_URL }}/immortalis/immortalis-backend-api:${{ env.CI_REF_NAME }}
+        tags: ${{ steps.api-meta.outputs.tags }}
+        labels: ${{ steps.api-meta.outputs.labels }}
         context: "./immortalis-backend"
         target: immortalis-backend-api
+
+    - name: Extract metadata (tags, labels) for Docker immortalis-backend-archiver
+      id: archiver-meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ env.REGISTRY }}/immortalis/immortalis-backend-archiver
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
         #push: true
-        tags: ${{ secrets.REGISTRY_URL }}/immortalis/immortalis-backend-archiver:${{ env.CI_REF_NAME }}
+        tags: ${{ steps.archiver-meta.outputs.tags }}
+        labels: ${{ steps.archiver-meta.outputs.labels }}
         context: "./immortalis-backend"
         target: immortalis-backend-archiver
+
+    - name: Extract metadata (tags, labels) for Docker immortalis-backend-tracker
+      id: tracker-meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ env.REGISTRY }}/immortalis/immortalis-backend-tracker
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
         #push: true
-        tags: ${{ secrets.REGISTRY_URL }}/immortalis/immortalis-backend-tracker:${{ env.CI_REF_NAME }}
+        tags: ${{ steps.tracker-meta.outputs.tags }}
+        labels: ${{ steps.tracker-meta.outputs.labels }}
         context: "./immortalis-backend"
         target: immortalis-backend-tracker
+
+    - name: Extract metadata (tags, labels) for Docker immortalis-backend-common
+      id: common-meta
+      uses: docker/metadata-action@v4
+      with:
+        images: ${{ env.REGISTRY }}/immortalis/immortalis-backend-common
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
         #push: true
-        tags: ${{ secrets.REGISTRY_URL }}/immortalis/immortalis-backend-common:${{ env.CI_REF_NAME }}
+        tags: ${{ steps.common-meta.outputs.tags }}
+        labels: ${{ steps.common-meta.outputs.labels }}
         context: "./immortalis-backend"
         target: immortalis-backend-common
