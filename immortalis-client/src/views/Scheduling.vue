@@ -104,7 +104,18 @@ async function schedule() {
       }
     }
   );
-  response.ok ? new Notyf().success(i18n.t('scheduleView.success.scheduled', [url.value])) : new Notyf().error(i18n.t(`scheduleView.error.alreadyScheduled`, [url.value]))
+
+  switch (response.status) {
+  case 200:
+    new Notyf().success(i18n.t(`scheduleView.success.alreadyScheduled`, [url.value]));
+    break;
+  case 201:
+    new Notyf().success(i18n.t('scheduleView.success.scheduled', [url.value]));
+    break;
+  case 400:
+    new Notyf().error(i18n.t('scheduleView.error.badRequest',  [url.value]));
+    break;
+  }
   url.value = "";
 }
 </script>

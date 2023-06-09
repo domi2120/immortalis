@@ -20,6 +20,7 @@ use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use websocket_actor::WebSocketActor;
 
 use dotenvy::dotenv;
@@ -62,6 +63,11 @@ async fn tracked_collection(
     schedule_request: web::Json<ScheduleRequest>,
     app_state: web::Data<AppState>,
 ) -> impl Responder {
+
+    if schedule_request.url.is_empty() || !schedule_request.url.contains("youtube.com") {
+        return HttpResponse::BadRequest();
+    }
+
     insert_into(tracked_collections::table)
         .values(tracked_collections::url.eq(&schedule_request.url))
         .execute(&mut app_state.db_connection_pool.get().await.unwrap())
@@ -75,7 +81,7 @@ async fn schedule(
     schedule_request: web::Json<ScheduleRequest>,
     app_state: web::Data<AppState>,
 ) -> impl Responder {
-    if schedule_request.url.is_empty() {
+    if schedule_request.url.is_empty() || !schedule_request.url.contains("youtube.com") {
         return HttpResponse::BadRequest();
     }
 
@@ -104,7 +110,7 @@ async fn schedule(
             .unwrap();
         info!("Scheduled {} entries for url {}", inserted, video_url);
 
-        HttpResponse::Ok()
+        HttpResponse::Created()
     } else {
         HttpResponse::BadRequest()
     }

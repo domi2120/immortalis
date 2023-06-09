@@ -15,10 +15,11 @@ export const messages = {
       "waitingUntil": "Execution planned at",
       "schedule": "Schedule",
       error: {
-        "alreadyScheduled": "The Url {0} is already archived, or scheduled for archival"
+        "badRequest": "The Url {0} was deemed invalid and could not be scheduled",
       },
       success: {
         "scheduled": "The Url {0} has been scheduled for archival",
+        "alreadyScheduled": "The Url {0} is already archived, or scheduled for archival"
       },
     },
     trackedCollectionsView: {

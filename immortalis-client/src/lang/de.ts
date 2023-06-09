@@ -14,6 +14,13 @@ export const messages = {
       "scheduledAt": "Geplant am",
       "waitingUntil": "Ausführung am",
       "schedule": "Planen",
+      error: {
+        "badRequest": "Die Adresse {0} ist ungültig und konnte nicht geplant werden",
+      },
+      success: {
+        "scheduled": "Die Archivierung der Adresse {0} wurde geplant",
+        "alreadyScheduled": "Die Adresse {0} wurde bereits archiviert, oder ist bereits in der Planung"
+      },
     },
     trackedCollectionsView: {
       "address": "Adresse",
