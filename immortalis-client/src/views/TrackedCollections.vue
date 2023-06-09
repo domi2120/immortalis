@@ -5,7 +5,7 @@
       <v-spacer></v-spacer>
       <v-col :cols="6" sm=12 class="d-flex flex-column mt-15 mb-15">
         <v-text-field :label="$t('trackedCollectionsView.address')" class="mt-10 w-50 d-flex flex-column align-self-center" v-model="url" ></v-text-field>
-        <v-btn class="w-50 d-flex flex-column align-self-center" @click="track">{{ $t('track') }}</v-btn>
+        <v-btn class="w-50 d-flex flex-column align-self-center" @click="track">{{ $t('trackedCollectionsView.track') }}</v-btn>
       </v-col>
 
       <v-data-table
