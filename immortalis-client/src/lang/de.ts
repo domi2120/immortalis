@@ -26,7 +26,13 @@ export const messages = {
       "address": "Adresse",
       "track": "Verfolgen",
       "startedTrackingAt": "Verfolgt seit",
-      "lastCheckedAt": "Zuletzt geprüft am"
+      "lastCheckedAt": "Zuletzt geprüft am",
+      error: {
+        "alreadyTracked": "Die Adresse {0} wird bereits verfolgt"
+      },
+      success: {
+        "tracked": "Die Adresse {0} wird nun verfolgt",
+      },
     },
     navigation: {
       "home": "Zuhause",
