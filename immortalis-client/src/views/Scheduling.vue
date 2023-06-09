@@ -30,7 +30,7 @@ import { onMounted } from 'vue';
 import { onUnmounted } from 'vue';
 import { Ref, ref } from 'vue';
 import { ScheduledArchival } from '@/models/scheduledArchival'
-import Notyf from '@/notification';
+import { notyfInstance } from '@/notification';
 import { WebSocketEvent } from '@/models/webSocketEvent';
 import { DataChangeEvent } from '@/models/dataChangeEvent';
 import { emitter } from '@/eventService';
@@ -69,7 +69,7 @@ onMounted(async () => {
   try {
     schedules.value = await (await fetch("/api/schedule")).json();
   } catch (e) {
-    new Notyf().error(i18n.t("error.serverNotAvailable"));
+    notyfInstance.error(i18n.t("error.serverNotAvailable"));
   }
 })
 
@@ -107,13 +107,13 @@ async function schedule() {
 
   switch (response.status) {
   case 200:
-    new Notyf().success(i18n.t(`scheduleView.success.alreadyScheduled`, [url.value]));
+    notyfInstance.success(i18n.t(`scheduleView.success.alreadyScheduled`, [url.value]));
     break;
   case 201:
-    new Notyf().success(i18n.t('scheduleView.success.scheduled', [url.value]));
+    notyfInstance.success(i18n.t('scheduleView.success.scheduled', [url.value]));
     break;
   case 400:
-    new Notyf().error(i18n.t('scheduleView.error.badRequest',  [url.value]));
+    notyfInstance.error(i18n.t('scheduleView.error.badRequest',  [url.value]));
     break;
   }
   url.value = "";

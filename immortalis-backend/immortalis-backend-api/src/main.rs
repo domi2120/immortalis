@@ -68,12 +68,17 @@ async fn tracked_collection(
         return HttpResponse::BadRequest();
     }
 
-    insert_into(tracked_collections::table)
+    let response = insert_into(tracked_collections::table)
         .values(tracked_collections::url.eq(&schedule_request.url))
+        .on_conflict_do_nothing()
         .execute(&mut app_state.db_connection_pool.get().await.unwrap())
         .await
         .unwrap();
-    HttpResponse::Ok()
+    if response > 0 {
+        HttpResponse::Created()
+    } else {
+        HttpResponse::Ok()
+    }
 }
 
 #[post("schedule")]

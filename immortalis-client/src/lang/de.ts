@@ -28,10 +28,11 @@ export const messages = {
       "startedTrackingAt": "Verfolgt seit",
       "lastCheckedAt": "Zuletzt geprüft am",
       error: {
-        "alreadyTracked": "Die Adresse {0} wird bereits verfolgt"
+        "badRequest": "Die Adresse {0} ist invalide und kann nicht verfolgt werden",
       },
       success: {
-        "tracked": "Die Adresse {0} wird nun verfolgt",
+        "tracked": "Die Adresse {0} wird jetzt verfolgt",
+        "alreadyTracked": "Die Adresse {0} wird bereits verfolgt"
       },
     },
     navigation: {

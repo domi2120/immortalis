@@ -33,7 +33,7 @@ import { onMounted } from 'vue';
 import { onUnmounted } from 'vue';
 import { Ref, ref } from 'vue';
 import { emitter } from '@/eventService';
-import { Notyf } from 'notyf';
+import { notyfInstance } from '@/notification';
 import { useI18n } from 'vue-i18n';
 
 const i18n = useI18n();
@@ -71,7 +71,7 @@ onMounted(async () => {
   try {
     schedules.value = await (await fetch("/api/tracked_collection")).json();
   } catch (e) {
-    new Notyf().error(i18n.t("error.serverNotAvailable"));
+    notyfInstance.error(i18n.t("error.serverNotAvailable"));
   }
 })
 
@@ -106,7 +106,19 @@ async function track() {
       }
     }
   );
-  response.ok ? new Notyf().success(i18n.t('trackedCollectionsView.success.trackedCollectionAdded', [url.value])) : new Notyf().error(i18n.t(`trackedCollectionsView.error.alreadyTracked`, [url.value]))
+  
+  switch (response.status) {
+  case 200:
+    notyfInstance.success(i18n.t(`trackedCollectionsView.success.alreadyTracked`, [url.value]));
+    break;
+  case 201:
+    notyfInstance.success(i18n.t('trackedCollectionsView.success.tracked', [url.value]));
+    break;
+  case 400:
+    notyfInstance.error(i18n.t('trackedCollectionsView.error.badRequest',  [url.value]));
+    break;
+  }
+
   url.value = "";
 }
 

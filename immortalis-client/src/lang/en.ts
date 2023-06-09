@@ -28,10 +28,11 @@ export const messages = {
       "startedTrackingAt": "Started tracking at",
       "lastCheckedAt": "last checked at",
       error: {
-        "alreadyTracked": "The Url {0} is already being tracked"
+        "badRequest": "The Url {0} was deemed invalid and could not be tracked",
       },
       success: {
         "tracked": "The Url {0} is now being tracked",
+        "alreadyTracked": "The Url {0} is already being tracked"
       },
     },
     navigation: {
