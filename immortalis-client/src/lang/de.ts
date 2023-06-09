@@ -30,7 +30,7 @@ export const messages = {
       "views": "Aufrufe",
       status: {
         "Archived": "Archiviert",
-        "beingArchived": "Wird archiviert"
+        "BeingArchived": "Wird archiviert"
       },
     }
   }
