@@ -186,13 +186,13 @@ async fn get_file(
             .bucket
             .presign_get(
                 format!("{}.{}", &f.id.to_string(), &f.file_extension),
-                60,
+                31536000,
                 Some(custom_queries),
             )
             .unwrap();
 
         let mut response = actix_web::web::Redirect::to(presign).respond_to(&req);
-        response.headers_mut().append(CACHE_CONTROL, HeaderValue::from_static("public, max-age=55")); // cache the presigned link for a few seconds less than its valid
+        response.headers_mut().append(CACHE_CONTROL, HeaderValue::from_static("public, max-age=31536000")); // cache the presigned link for as long as its valid (1 year)
         Ok(response.map_into_boxed_body())
     } else {
         let mut response = actix_files::NamedFile::open_async(format!(
