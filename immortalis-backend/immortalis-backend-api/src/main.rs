@@ -181,18 +181,19 @@ async fn get_file(
                 f.file_name, &f.file_extension
             ),
         );
-        custom_queries.insert("cache-control".into(), "public, max-age=604800".into()); // the file downloaded from minio is cached for 7 days
+
+        custom_queries.insert("cache-control".into(), format!("public, max-age={}", app_state.env_var_config.s3_file_cache_duration_seconds)); // the file downloaded from minio is cached for 7 days
         let presign = app_state
             .bucket
             .presign_get(
                 format!("{}.{}", &f.id.to_string(), &f.file_extension),
-                604800,
+                app_state.env_var_config.s3_file_cache_duration_seconds,
                 Some(custom_queries),
             )
             .unwrap();
 
         let mut response = actix_web::web::Redirect::to(presign).respond_to(&req);
-        response.headers_mut().append(CACHE_CONTROL, HeaderValue::from_static("public, max-age=604800")); // cache the presigned link for as long as its valid (7 days, which is the maximum for s3)
+        response.headers_mut().append(CACHE_CONTROL, HeaderValue::from_str(format!("public, max-age={}", app_state.env_var_config.s3_file_cache_duration_seconds).as_str()).unwrap()); // cache the presigned link for as long as its valid (7 days, which is the maximum for s3)
         Ok(response.map_into_boxed_body())
     } else {
         let mut response = actix_files::NamedFile::open_async(format!(
@@ -214,7 +215,7 @@ async fn get_file(
             })],
         });
 
-        let response = response.customize().append_header(("cache-control", "public, max-age=31536000")); // the file directly returned is cached for one year
+        let response = response.customize().append_header(("cache-control", format!("public, max-age={}", app_state.env_var_config.disk_file_cache_duration_seconds))); // the file directly returned is cached for one year
         Ok(response.respond_to(&req).map_into_boxed_body())
     }
 }

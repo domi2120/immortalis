@@ -28,11 +28,24 @@ pub struct EnvVarConfigApi {
     #[serde(default)] // https://github.com/softprops/envy/issues/26
     pub use_s3: bool,
 
+    #[serde(default = "s3_file_cache_duration_seconds_default")]
+    pub s3_file_cache_duration_seconds: u32,
+    #[serde(default = "disk_file_cache_duration_seconds_default")]
+    pub disk_file_cache_duration_seconds: u32,
+
     #[serde(flatten)]
     pub general_config: EnvVarConfigGeneral,
     #[serde(flatten)]
     pub storage_config: StorageConfig,
     pub use_ipv6: bool,
+}
+
+const fn s3_file_cache_duration_seconds_default() -> u32 {
+    60 * 60 * 24 * 7
+}
+
+const fn disk_file_cache_duration_seconds_default() -> u32 {
+    60 * 60 * 24 * 365
 }
 
 #[derive(Deserialize, Debug)]
