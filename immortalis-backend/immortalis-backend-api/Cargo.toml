@@ -26,6 +26,7 @@ sqlx = { version = "0.6", features = [
 ] }
 actix-web-actors = "4.2.0"
 actix = { version = "0.13.0", features = ["macros"] }
+actix-http = "3"
 envy = "0.4"
 rust-s3 = "0.33"
 tokio = "*"

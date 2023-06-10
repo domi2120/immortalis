@@ -3,6 +3,7 @@ use std::sync::{Arc, RwLock};
 use std::time::Duration;
 
 use actix::Addr;
+use actix_http::header::{HeaderValue, CACHE_CONTROL};
 use actix_web::http::header::{Charset, ContentDisposition, DispositionParam, ExtendedValue};
 use actix_web::{get, post, web, App, HttpRequest, HttpResponse, HttpServer, Responder};
 use actix_web_actors::ws::{self};
@@ -180,6 +181,7 @@ async fn get_file(
                 f.file_name, &f.file_extension
             ),
         );
+        custom_queries.insert("cache-control".into(), "public, max-age=31536000".into()); // the file downloaded from minio is cached for one year
         let presign = app_state
             .bucket
             .presign_get(
@@ -189,29 +191,31 @@ async fn get_file(
             )
             .unwrap();
 
-        Ok(actix_web::web::Redirect::to(presign)
-            .respond_to(&req)
-            .map_into_boxed_body())
+        let mut response = actix_web::web::Redirect::to(presign).respond_to(&req);
+        response.headers_mut().append(CACHE_CONTROL, HeaderValue::from_static("public, max-age=55")); // cache the presigned link for a few seconds less than its valid
+        Ok(response.map_into_boxed_body())
     } else {
-        let response = actix_files::NamedFile::open_async(format!(
+        let mut response = actix_files::NamedFile::open_async(format!(
             "{}{}.{}",
             app_state.file_storage_location.to_owned(),
             &f.id.to_string(),
             &f.file_extension
         ))
         .await?;
-        Ok(response
-            .set_content_disposition(ContentDisposition {
-                disposition: actix_web::http::header::DispositionType::Attachment,
-                parameters: vec![DispositionParam::FilenameExt(ExtendedValue {
-                    value: format!("{}.{}", f.file_name, &f.file_extension)
-                        .as_bytes()
-                        .to_vec(),
-                    charset: Charset::Ext("UTF-8".to_string()),
-                    language_tag: None,
-                })],
-            })
-            .into_response(&req))
+        response = response
+        .set_content_disposition(ContentDisposition {
+            disposition: actix_web::http::header::DispositionType::Attachment,
+            parameters: vec![DispositionParam::FilenameExt(ExtendedValue {
+                value: format!("{}.{}", f.file_name, &f.file_extension)
+                    .as_bytes()
+                    .to_vec(),
+                charset: Charset::Ext("UTF-8".to_string()),
+                language_tag: None,
+            })],
+        });
+
+        let response = response.customize().append_header(("cache-control", "public, max-age=31536000")); // the file directly returned is cached for one year
+        Ok(response.respond_to(&req).map_into_boxed_body())
     }
 }
 
