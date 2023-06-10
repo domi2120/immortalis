@@ -25,12 +25,20 @@ spec:
       serviceAccountName: {{ include "immortalis.fullnameclient" . }}
       securityContext:
         {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "immortalis.fullnameclient" . }}-config
       containers:
         - name: {{ .Chart.Name }}
           securityContext:
             {{- toYaml .Values.securityContext | nindent 12 }}
           image: "{{ .Values.client.image.repository }}:{{ .Values.client.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.client.image.pullPolicy }}
+          volumeMounts:
+            - name: config
+              mountPath: "/etc/nginx/nginx.conf"
+              subPath: nginx.conf
           ports:
             - name: http
               containerPort: {{ .Values.client.port }}
