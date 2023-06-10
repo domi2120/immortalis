@@ -13,10 +13,10 @@ use immortalis_backend_common::database_models::tracked_collection::TrackedColle
 use immortalis_backend_common::env_var_config::EnvVarConfigTracker;
 use immortalis_backend_common::schema::{scheduled_archivals, tracked_collections, videos};
 
+use immortalis_backend_common::utilities::UrlType;
 use serde_json::Value;
 use tracing::{error, info};
 use youtube_dl::{Playlist, YoutubeDlOutput};
-pub mod utilities;
 
 #[tokio::main]
 async fn main() {
@@ -218,16 +218,19 @@ async fn track(pool: Pool<AsyncPgConnection>) -> bool {
     if let Some(videos) = tracked_collection.entries {
         for video in videos {
             let url = video.webpage_url.unwrap();
-
-            if utilities::is_youtube_video_collection(&url) {
-                insert_into(tracked_collections::table)
-                    .values(tracked_collections::url.eq(&url))
-                    .on_conflict_do_nothing()
-                    .execute(db_connection)
-                    .await
-                    .unwrap();
-                info!("Inserted {} into TrackedCollections", url);
-                continue;
+            
+            match immortalis_backend_common::utilities::get_url_type(&url) {
+                UrlType::Collection | UrlType::VideoOrCollection =>  {
+                    insert_into(tracked_collections::table)
+                        .values(tracked_collections::url.eq(&url))
+                        .on_conflict_do_nothing()
+                        .execute(db_connection)
+                        .await
+                        .unwrap();
+                    info!("Inserted {} into TrackedCollections", url);
+                    continue;
+                },
+                _ => ()
             }
 
             if archived_or_scheduled_video_urls.contains(&url) {

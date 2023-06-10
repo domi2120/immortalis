@@ -19,8 +19,8 @@ use diesel::{JoinOnDsl, PgTextExpressionMethods, QueryDsl};
 use diesel_async::pooled_connection::deadpool::Pool;
 use diesel_async::pooled_connection::AsyncDieselConnectionManager;
 use diesel_async::{AsyncPgConnection, RunQueryDsl};
+use immortalis_backend_common::utilities::{get_url_type, UrlType};
 use serde::{Deserialize, Serialize};
-use serde_json::json;
 use websocket_actor::WebSocketActor;
 
 use dotenvy::dotenv;
@@ -64,9 +64,10 @@ async fn tracked_collection(
     app_state: web::Data<AppState>,
 ) -> impl Responder {
 
-    if schedule_request.url.is_empty() || !schedule_request.url.contains("youtube.com") {
-        return HttpResponse::BadRequest();
-    }
+    match get_url_type(&schedule_request.url) {
+        UrlType::VideoOrCollection | UrlType::Collection => (),
+        _=> return HttpResponse::BadRequest()
+    };
 
     let response = insert_into(tracked_collections::table)
         .values(tracked_collections::url.eq(&schedule_request.url))
@@ -86,9 +87,11 @@ async fn schedule(
     schedule_request: web::Json<ScheduleRequest>,
     app_state: web::Data<AppState>,
 ) -> impl Responder {
-    if schedule_request.url.is_empty() || !schedule_request.url.contains("youtube.com") {
-        return HttpResponse::BadRequest();
-    }
+
+    match get_url_type(&schedule_request.url) {
+        UrlType::VideoOrCollection | UrlType::Video => (),
+        _=> return HttpResponse::BadRequest()
+    };
 
     // v is youtubes query param for the video, so its the only thing that we want to keep here
     if let Ok(video_url) = crate::utilities::filter_query_pairs(&schedule_request.url, vec!["v"]) {
