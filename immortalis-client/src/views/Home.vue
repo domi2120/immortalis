@@ -1,5 +1,9 @@
 <template>
   <v-container class="ma-10">
+    <v-row v-if="videos.length < 1">
+      <v-spacer/>
+      <v-col class="ma-10">{{ $t("noResultsFound") }}</v-col>
+    </v-row>
     <v-row v-for="video in videos" v-bind:key="video.id">
       <video-entry :video=ref(video) />
     </v-row>
