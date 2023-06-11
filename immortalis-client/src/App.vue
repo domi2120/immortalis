@@ -7,6 +7,9 @@
         <v-text-field :label="$t('search')" append-inner-icon="mdi-magnify" v-model="searchText" clearable class="w-50 mt-5 h-80" @keydown.enter="$router.push({ path: '/search', query: {searchText: searchText, t: Date.now()}})">
         </v-text-field>
         <v-spacer></v-spacer>
+        <v-btn icon href="https://github.com/domi2120/immortalis">
+          <v-icon>mdi-github</v-icon>
+        </v-btn>
       </v-app-bar>
       <v-navigation-drawer v-model="drawerOpened" permanent>
         <v-list nav :mandatory="true">
