@@ -5,7 +5,8 @@ on:
     tags: '*.*.*'
 
 env:
-  REGISTRY: ghcr.io/domi2120
+  REGISTRY: ghcr.io
+  REPOSITORY_NAME: ${{ github.repository }}
 
 jobs:
   build-client:
@@ -27,7 +28,7 @@ jobs:
       id: client-meta
       uses: docker/metadata-action@v4
       with:
-        images: ${{ env.REGISTRY }}/immortalis/immortalis-client
+        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY_NAME }}/immortalis-client
 
     - name: Build and push
       uses: docker/build-push-action@v4
@@ -50,7 +51,7 @@ jobs:
       id: api-meta
       uses: docker/metadata-action@v4
       with:
-        images: ${{ env.REGISTRY }}/immortalis/immortalis-backend-api
+        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY_NAME }}/immortalis-backend-api
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
@@ -66,7 +67,7 @@ jobs:
       id: archiver-meta
       uses: docker/metadata-action@v4
       with:
-        images: ${{ env.REGISTRY }}/immortalis/immortalis-backend-archiver
+        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY_NAME }}/immortalis-backend-archiver
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
@@ -82,7 +83,7 @@ jobs:
       id: tracker-meta
       uses: docker/metadata-action@v4
       with:
-        images: ${{ env.REGISTRY }}/immortalis/immortalis-backend-tracker
+        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY_NAME }}/immortalis-backend-tracker
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
@@ -98,7 +99,7 @@ jobs:
       id: common-meta
       uses: docker/metadata-action@v4
       with:
-        images: ${{ env.REGISTRY }}/immortalis/immortalis-backend-common
+        images: ${{ env.REGISTRY }}/${{ env.REPOSITORY_NAME }}/immortalis-backend-common
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
