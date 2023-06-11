@@ -3,7 +3,7 @@ entries:
   immortalis:
   - apiVersion: v2
     appVersion: 0.1.0
-    created: "2023-06-11T22:23:59.192122763+02:00"
+    created: "2023-06-11T22:49:00.100805067+02:00"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -14,10 +14,10 @@ entries:
       repository: https://charts.min.io
       version: 5.0.10
     description: A Helm chart for Kubernetes
-    digest: 5c8a634028f9e9b04cca5ddc3503a58c68553e16114b714c71c01bcdbe222449
+    digest: fad66bbd1ed1d5484b798aafa4aaab10c4dac7c4ef63235ca7779d2082f32726
     name: immortalis
     type: application
     urls:
     - https://domi2120.github.io/immortalis/immortalis-0.1.0.tgz
     version: 0.1.0
-generated: "2023-06-11T22:23:59.186486965+02:00"
+generated: "2023-06-11T22:49:00.096341472+02:00"

@@ -4,7 +4,7 @@
 
 api:
   image:
-    repository: localhost:32000/immortalis/immortalis-backend-api
+    repository: ghcr.io/domi2120/immortalis/immortalis-backend-api
     pullPolicy: Always
     # Overrides the image tag whose default is the chart appVersion.
     tag: "latest"
@@ -24,7 +24,7 @@ api:
 
 archiver:
   image:
-    repository: localhost:32000/immortalis/immortalis-backend-archiver
+    repository: ghcr.io/domi2120/immortalis/immortalis-backend-archiver
     pullPolicy: Always
     # Overrides the image tag whose default is the chart appVersion.
     tag: "latest"
@@ -33,7 +33,7 @@ archiver:
 
 tracker:
   image:
-    repository: localhost:32000/immortalis/immortalis-backend-tracker
+    repository: ghcr.io/domi2120/immortalis/immortalis-backend-tracker
     pullPolicy: Always
     # Overrides the image tag whose default is the chart appVersion.
     tag: "latest"
@@ -42,14 +42,14 @@ tracker:
 
 common:
   image:
-    repository: localhost:32000/immortalis/immortalis-backend-common
+    repository: ghcr.io/domi2120/immortalis/immortalis-backend-common
     pullPolicy: Always
     # Overrides the image tag whose default is the chart appVersion.
     tag: "latest"
 
 client:
   image:
-    repository: localhost:32000/immortalis/immortalis-client
+    repository: ghcr.io/domi2120/immortalis/immortalis-client
     pullPolicy: Always
     # Overrides the image tag whose default is the chart appVersion.
     tag: "latest"
