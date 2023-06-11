@@ -11,6 +11,9 @@ env:
 jobs:
   build-client:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
     - uses: FranzDiebold/github-env-vars-action@v2
     - uses: actions/checkout@v3
@@ -41,6 +44,9 @@ jobs:
         cache-to: type=gha,mode=max
   build-backend:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
     steps:
     - uses: FranzDiebold/github-env-vars-action@v2
     - uses: actions/checkout@v3
