@@ -43,7 +43,7 @@ spec:
             - name: SIMULATED_DOWNLOAD_DURATION_SECONDS
               value: "0"
             - name: ARCHIVER_THREAD_COUNT
-              value: "1"
+              value: "10"
             - name: ARCHIVER_ARCHIVING_TIMEOUT_SECONDS
               value: "6000"
             - name: ARCHIVER_ERROR_BACKOFF_SECONDS
