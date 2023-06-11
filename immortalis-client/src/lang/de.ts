@@ -1,7 +1,7 @@
 export const messages = {
   de: {
     "search": "Suchen",
-    "noResultsFound": "No results found",
+    "noResultsFound": "Keine Ergebnisse gefunden",
     error: {
       "serverNotAvailable": "Der Server konnte nicht erreich werden",
       "alreadyScheduled": "Die Addresse {0} wurde bereits archiviert oder wurde bereits zur Archivierung geplant"
