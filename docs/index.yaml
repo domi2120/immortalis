@@ -1,0 +1,23 @@
+apiVersion: v1
+entries:
+  immortalis:
+  - apiVersion: v2
+    appVersion: 0.1.0
+    created: "2023-06-11T22:23:59.192122763+02:00"
+    dependencies:
+    - condition: postgresql.enabled
+      name: postgresql
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 12.5.6
+    - condition: minio.enabled
+      name: minio
+      repository: https://charts.min.io
+      version: 5.0.10
+    description: A Helm chart for Kubernetes
+    digest: 5c8a634028f9e9b04cca5ddc3503a58c68553e16114b714c71c01bcdbe222449
+    name: immortalis
+    type: application
+    urls:
+    - https://domi2120.github.io/immortalis/immortalis-0.1.0.tgz
+    version: 0.1.0
+generated: "2023-06-11T22:23:59.186486965+02:00"
