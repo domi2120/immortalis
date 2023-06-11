@@ -5,7 +5,7 @@ on:
     tags: '*.*.*'
 
 env:
-  REGISTRY: ghcr.io
+  REGISTRY: ghcr.io/domi2120
 
 jobs:
   build-client:
@@ -32,7 +32,7 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
-        #push: true
+        push: true
         tags: ${{ steps.client-meta.outputs.tags }}
         labels: ${{ steps.client-meta.outputs.labels }}
         context: "./immortalis-client"
@@ -54,7 +54,7 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
-        #push: true
+        push: true
         tags: ${{ steps.api-meta.outputs.tags }}
         labels: ${{ steps.api-meta.outputs.labels }}
         context: "./immortalis-backend"
@@ -70,7 +70,7 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
-        #push: true
+        push: true
         tags: ${{ steps.archiver-meta.outputs.tags }}
         labels: ${{ steps.archiver-meta.outputs.labels }}
         context: "./immortalis-backend"
@@ -86,7 +86,7 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
-        #push: true
+        push: true
         tags: ${{ steps.tracker-meta.outputs.tags }}
         labels: ${{ steps.tracker-meta.outputs.labels }}
         context: "./immortalis-backend"
@@ -102,7 +102,7 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v4
       with:
-        #push: true
+        push: true
         tags: ${{ steps.common-meta.outputs.tags }}
         labels: ${{ steps.common-meta.outputs.labels }}
         context: "./immortalis-backend"
