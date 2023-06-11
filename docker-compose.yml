@@ -36,7 +36,7 @@ services:
 
   # runs the DB migrations
   migrator:
-    image: immortalis-backend-common
+    image: ghcr.io/domi2120/immortalis/immortalis-backend-common
     depends_on:
       - db
     build:
@@ -46,7 +46,7 @@ services:
       - ".docker-compose.env"
 
   tracker:
-    image: immortalis-backend-tracker 
+    image: ghcr.io/domi2120/immortalis/immortalis-backend-tracker 
     depends_on:
       - migrator
     build:
@@ -56,7 +56,7 @@ services:
       - ".docker-compose.env"
 
   api:
-    image: immortalis-backend-api 
+    image: ghcr.io/domi2120/immortalis/immortalis-backend-api 
     depends_on:
       - migrator
     build:
@@ -70,7 +70,7 @@ services:
       - ./downloads:/downloads
   
   archiver:
-    image: immortalis-backend-archiver 
+    image: ghcr.io/domi2120/immortalis/immortalis-backend-archiver 
     depends_on:
       - migrator
     build:
@@ -82,7 +82,7 @@ services:
       - ./downloads:/downloads
 
   client:
-    image: immortalis-client
+    image: ghcr.io/domi2120/immortalis/immortalis-client
     build:
       context: ./immortalis-client
       dockerfile: ./Dockerfile
