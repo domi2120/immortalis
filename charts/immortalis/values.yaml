@@ -71,7 +71,7 @@ minio:
   enabled: true # dont set this to false, existing s3 is not yet implemented
   replicas: 1
   persistence:
-    enabled: false
+    enabled: true
   mode: standalone
   rootUser: minio123
   rootPassword: minio123
