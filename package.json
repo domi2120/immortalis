@@ -11,7 +11,8 @@
     "start-all": "(trap 'kill 0' SIGINT; (pnpm --silent run run-client & pnpm --silent run run-backend) ) ",
     "rustfmt": "(cd immortalis-backend && cargo fmt)",
     "clippy": "(cd immortalis-backend && cargo clippy)",
-    "clippy-fix": "(cd immortalis-backend && cargo clippy --fix)"
+    "clippy-fix": "(cd immortalis-backend && cargo clippy --fix)",
+    "publish-chart": "cd docs  && helm package ../charts/immortalis/ && helm repo index --url https://domi2120.github.io/immortalis . --merge index.yaml"
   },
   "keywords": [],
   "author": "",
