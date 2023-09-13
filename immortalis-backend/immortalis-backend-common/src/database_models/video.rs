@@ -48,7 +48,7 @@ impl InsertableVideo {
         thumbnail_id: uuid::Uuid,
     ) -> InsertableVideo {
         InsertableVideo {
-            title: single_video.title,
+            title: single_video.title.unwrap_or_default(),
             channel: single_video.channel.unwrap(),
             views: single_video.view_count.unwrap(),
             upload_date: DateTime::from_utc(
