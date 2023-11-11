@@ -29,7 +29,7 @@ RUN apt update -y && \
 EXPOSE 8080
 CMD ["./immortalis-backend-common"]
 
-FROM python:slim-bullseye as immortalis-Backend-archiver
+FROM python:slim as immortalis-Backend-archiver
 COPY --from=builder app/target/release/immortalis-backend-archiver ./immortalis-backend-archiver
 RUN apt update -y && \
     apt install curl -y && \
@@ -40,7 +40,7 @@ RUN apt update -y && \
 EXPOSE 8080
 CMD ["./immortalis-backend-archiver"]
 
-FROM python:slim-bullseye as immortalis-backend-tracker
+FROM python:slim as immortalis-backend-tracker
 COPY --from=builder app/target/release/immortalis-backend-tracker ./immortalis-backend-tracker
 RUN apt update -y && \
     apt install curl -y && \
