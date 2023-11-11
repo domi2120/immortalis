@@ -2,8 +2,27 @@ apiVersion: v1
 entries:
   immortalis:
   - apiVersion: v2
+    appVersion: 0.4.0
+    created: "2023-11-11T12:29:12.377227182+01:00"
+    dependencies:
+    - condition: postgresql.enabled
+      name: postgresql
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 12.5.6
+    - condition: minio.enabled
+      name: minio
+      repository: https://charts.min.io
+      version: 5.0.10
+    description: A Helm chart for Kubernetes
+    digest: 153e8664db00c141b754994a75096d2686d380ba1e1a16e237e2a44ae2a52326
+    name: immortalis
+    type: application
+    urls:
+    - https://domi2120.github.io/immortalis/immortalis-0.4.0.tgz
+    version: 0.4.0
+  - apiVersion: v2
     appVersion: 0.3.0
-    created: "2023-11-11T08:47:17.508423479+01:00"
+    created: "2023-11-11T12:29:12.372864944+01:00"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -22,7 +41,7 @@ entries:
     version: 0.3.0
   - apiVersion: v2
     appVersion: 0.2.0
-    created: "2023-11-11T08:47:17.503414243+01:00"
+    created: "2023-11-11T12:29:12.367425144+01:00"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -41,7 +60,7 @@ entries:
     version: 0.2.0
   - apiVersion: v2
     appVersion: 0.1.0
-    created: "2023-11-11T08:47:17.496787735+01:00"
+    created: "2023-11-11T12:29:12.362271527+01:00"
     dependencies:
     - condition: postgresql.enabled
       name: postgresql
@@ -58,4 +77,4 @@ entries:
     urls:
     - https://domi2120.github.io/immortalis/immortalis-0.1.0.tgz
     version: 0.1.0
-generated: "2023-11-11T08:47:17.48938683+01:00"
+generated: "2023-11-11T12:29:12.356529936+01:00"
